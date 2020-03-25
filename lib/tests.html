@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Unit Tests of yodasws.js</title>
+<link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.9.1.css"/>
+<script src="https://code.jquery.com/qunit/qunit-2.9.1.js"></script>
+<script src="yodasws.js"></script>
+<script>
+QUnit.testStart(() => {
+});
+
+QUnit.test('yodasws.page', (test) => {
+  const page = yodasws.page('pageHome');
+  test.deepEqual(
+    page,
+    yodasws.page('pageHome'),
+    'Second call returns object that was created earlier',
+  );
+});
+
+QUnit.test('Page.setRoute', (test) => {
+  const page = yodasws.page('pageHome');
+  test.throws(
+    () => {
+      page.setRoute('/');
+    },
+    TypeError,
+    'Cannot set route to a string',
+  );
+  test.throws(
+    () => {
+      page.setRoute({});
+    },
+    TypeError,
+    'Route string required',
+  );
+  test.throws(
+    () => {
+      page.setRoute({
+        route: '/',
+      });
+    },
+    TypeError,
+    'Template URL string required',
+  );
+  test.ok(
+    page.setRoute({
+      route: '/',
+      template: 'pages/home.html',
+    }),
+    'setRoute successful',
+  );
+});
+</script>
+</head>
+<body>
+<div id="qunit"></div>
+</body>
+</html>

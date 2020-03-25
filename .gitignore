@@ -1,3 +1,11 @@
+# Vim
+*.swp
+*~
+
+# Sam's Super Awesome Webtoolkit
+bundle
+build
+
 # Logs
 logs
 *.log
