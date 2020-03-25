@@ -79,7 +79,6 @@ const plugins = {
 		},
 	}),
 	replaceString: require('@yodasws/gulp-pattern-replace'),
-	lintHTML: require('@yodasws/gulp-htmllint'),
 	webpack: require('webpack-stream'),
 	named: require('vinyl-named'),
 };
@@ -256,45 +255,6 @@ const options = {
 
 		},
 	},
-	lintHTML: {
-		useHtmllintrc: false,
-		rules: {
-
-'attr-name-style': 'dash',
-'attr-no-dup': true,
-'attr-req-value': false,
-'class-no-dup': true,
-'class-style': 'dash',
-'doctype-html5': true,
-'fig-req-figcaption': false,
-'head-req-title': true,
-'head-valid-content-model': true,
-'html-req-lang': true,
-'id-class-style': 'dash',
-'id-no-dup': true,
-'img-req-alt': true,
-'img-req-src': true,
-'indent-style': 'tabs',
-'indent-width-cont': true,
-'input-radio-req-name': true,
-'input-req-label': true,
-'label-req-for': true,
-'line-end-style': 'lf',
-'spec-char-escape': false, // buggy, no need to escape & in URL queries
-'table-req-caption': false,
-'table-req-header': false, // buggy, see https://github.com/htmllint/htmllint/issues/197
-'tag-bans': [
-	'acronym','applet','basefont','big','blink','center','font','frame','frameset','isindex','noframes','marquee',
-	'style',
-],
-'tag-close': false,
-'tag-name-lowercase': true,
-'tag-name-match': true,
-'tag-self-close': false,
-'title-no-dup': true,
-
-		},
-	},
 	prefixCSS:{
 		cascade: false,
 		overrideBrowserslist: browsers,
@@ -419,7 +379,6 @@ function runTasks(task) {
 
 	// Output Linting Results
 	[
-		'lintHTML',
 		'lintSass',
 		'lintES'
 	].forEach((task) => {
@@ -436,7 +395,7 @@ function runTasks(task) {
 
 	// Run each task
 	if (tasks.length) for (let i=0, k=tasks.length; i<k; i++) {
-		if (['lintHTML', 'lintSass', 'lintES'].includes(tasks[i])) continue;
+		if (['lintSass', 'lintES'].includes(tasks[i])) continue;
 		let option = options[tasks[i]] || {};
 		if (option[fileType]) option = option[fileType];
 		stream = stream.pipe(plugins[tasks[i]](option));
@@ -512,7 +471,6 @@ function runTasks(task) {
 			'!**/includes/**/*.html',
 		],
 		tasks: [
-			'lintHTML',
 			'ssi',
 			'compileHTML',
 			'connect.reload',
@@ -536,14 +494,6 @@ function runTasks(task) {
 	});
 });
 
-gulp.task('lint:html', () => {
-	return gulp.src([
-		'src/**/*.html',
-	])
-		.pipe(plugins.lintHTML(options.lintHTML))
-		.pipe(plugins.lintHTML.format());
-});
-
 gulp.task('lint:sass', () => {
 	return gulp.src([
 		'src/**/*.{sa,sc,c}ss',
@@ -564,7 +514,7 @@ gulp.task('lint:js', () => {
 		.pipe(plugins.lintES.format());
 });
 
-gulp.task('lint', gulp.parallel('lint:sass', 'lint:js', 'lint:html'));
+gulp.task('lint', gulp.parallel('lint:sass', 'lint:js'));
 
 gulp.task('transfer:fonts', () => gulp.src([
 	'./node_modules/font-awesome/fonts/fontawesome-webfont.*',

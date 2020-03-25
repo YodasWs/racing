@@ -17,7 +17,6 @@
 		"@babel/core": "^7.5.5",
 		"@babel/preset-env": "^7.5.5",
 		"@mightyplow/sass-dedup-importer": "^1.1.1",
-		"@yodasws/gulp-htmllint": "<1.0.0",
 		"@yodasws/gulp-pattern-replace": "^1.1.1",
 		"file-exists": "^4.0.0",
 		"font-awesome": "^4.7.0",
