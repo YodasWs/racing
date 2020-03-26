@@ -13,76 +13,79 @@ yodasws.page('home').setRoute({
 	raceTrack.draw();
 });
 
-function Gradient(start, end, strength = 1) {
-	this.strength = strength;
-	this.start = start;
-	this.end = end;
+function TrackPiece(options) {
+	this.gradient = options.gradient || [1, 0];
+	this.delta = options.delta || [0, 0];
+	this.width = options.width || 20;
+	this.up = options.up || false;
 }
 
-function TrackPiece() {
-}
+const OvalCourse = [
+	{
+		gradient: [1, 0],
+		delta: [0, 0],
+		width: 20,
+	},
+	{
+		gradient: [1, 0],
+		delta: [20, 0],
+		width: 20,
+	},
+	{
+		gradient: [1, 1],
+		delta: [27, 13],
+		width: 20,
+	},
+	{
+		gradient: [0, 1],
+		delta: [13, 27],
+		width: 20,
+	},
+	{
+		gradient: [-1, 1],
+		delta: [-13, 27],
+		width: 20,
+	},
+	{
+		gradient: [-1, 0],
+		delta: [-27, 13],
+		width: 20,
+	},
+	{
+		gradient: [-1, 0],
+		delta: [-120, 0],
+		width: 20,
+	},
+	{
+		gradient: [1, -1],
+		delta: [-27, -13],
+		width: 20,
+		up: true,
+	},
+	{
+		gradient: [0, -1],
+		delta: [-13, -27],
+		width: 20,
+		up: true,
+	},
+	{
+		gradient: [-1, -1],
+		delta: [13, -27],
+		width: 20,
+		up: true,
+	},
+	{
+		gradient: [1, 0],
+		delta: [27, -13],
+		width: 20,
+	},
+];
 
 function RaceTrack(svg) {
-	const gradients = [
-		{
-			gradient: [1, 0],
-			delta: [0, 0],
-			width: 20,
-		},
-		{
-			gradient: [1, 0],
-			delta: [20, 0],
-			width: 20,
-		},
-		{
-			gradient: [1, 1],
-			delta: [27, 13],
-			width: 20,
-		},
-		{
-			gradient: [0, 1],
-			delta: [13, 27],
-			width: 20,
-		},
-		{
-			gradient: [-1, 1],
-			delta: [-13, 27],
-			width: 20,
-		},
-		{
-			gradient: [-1, 0],
-			delta: [-27, 13],
-			width: 20,
-		},
-		{
-			gradient: [-1, 0],
-			delta: [-120, 0],
-			width: 20,
-		},
-		{
-			gradient: [1, -1],
-			delta: [-27, -13],
-			width: 20,
-			up: true,
-		},
-		{
-			gradient: [0, -1],
-			delta: [-13, -27],
-			width: 20,
-			up: true,
-		},
-		{
-			gradient: [-1, -1],
-			delta: [13, -27],
-			width: 20,
-			up: true,
-		},
-		{
-			gradient: [1, 0],
-			delta: [27, -13],
-			width: 20,
-		},
-	];
+	const gradients = [];
+	OvalCourse.forEach((piece) => {
+		gradients.push(new TrackPiece(piece));
+	});
 
 	Object.defineProperties(this, {
 		gradients: {
