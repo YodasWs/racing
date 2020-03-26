@@ -9,19 +9,89 @@ yodasws.page('home').setRoute({
 }).on('load', () => {
 	const svg = document.querySelector('svg#scene');
 
-	const simulation = d3.forceSimulation();
 	const alice = new Car('Alice', {
 		color: 'lightgreen',
 		color2: 'orange',
 	});
-	simulation.nodes([
+
+	const OvalCourse = [
+		{
+			gradient: [1, 0],
+			delta: [0, 0],
+			width: 20,
+		},
+		{
+			gradient: [1, 0],
+			delta: [20, 0],
+			width: 20,
+		},
+		{
+			gradient: [1, 1],
+			delta: [27, 13],
+			width: 20,
+		},
+		{
+			gradient: [0, 1],
+			delta: [13, 27],
+			width: 20,
+		},
+		{
+			gradient: [-1, 1],
+			delta: [-13, 27],
+			width: 20,
+		},
+		{
+			gradient: [-1, 0],
+			delta: [-27, 13],
+			width: 20,
+		},
+		{
+			gradient: [-1, 0],
+			delta: [-120, 0],
+			width: 20,
+		},
+		{
+			gradient: [-1, -1],
+			delta: [-27, -13],
+			width: 20,
+			right: true,
+		},
+		{
+			gradient: [0, -1],
+			delta: [-13, -27],
+			width: 20,
+			up: true,
+		},
+		{
+			gradient: [1, -1],
+			delta: [13, -27],
+			width: 20,
+			left: true,
+		},
+		{
+			gradient: [1, 0],
+			delta: [27, -13],
+			width: 20,
+		},
+	].map(piece => new TrackPiece(piece));
+
+	const raceTrack = new RaceTrack(svg, OvalCourse, [
 		alice,
 	]);
-
-	const raceTrack = new RaceTrack(svg);
 	console.log('Sam, raceTrack:', raceTrack);
-	raceTrack.draw();
-	alice.addToSVG(svg);
+
+	console.log('Sam, nodes:', raceTrack.simulation.nodes());
+	raceTrack.simulation.stop();
+
+	document.getElementById('btnStart').addEventListener('click', () => {
+		console.log('Sam, start!');
+		raceTrack.simulation.stop();
+		raceTrack.init();
+		raceTrack.simulation.alpha(1);
+		setTimeout(() => {
+			raceTrack.simulation.restart();
+		}, 500);
+	});
 });
 
 function TrackPiece(options) {
@@ -31,77 +101,22 @@ function TrackPiece(options) {
 	this.right = options.right || false;
 	this.left = options.left || false;
 	this.up = options.up || false;
+
+	this.fx = d3.forceX().x((node, i) => {
+		return 10;
+	}).strength(0.001);
+	this.fy = d3.forceY().y((node, i) => {
+		return 10;
+	}).strength(0.001);
 }
 
-const OvalCourse = [
-	{
-		gradient: [1, 0],
-		delta: [0, 0],
-		width: 20,
-	},
-	{
-		gradient: [1, 0],
-		delta: [20, 0],
-		width: 20,
-	},
-	{
-		gradient: [1, 1],
-		delta: [27, 13],
-		width: 20,
-	},
-	{
-		gradient: [0, 1],
-		delta: [13, 27],
-		width: 20,
-	},
-	{
-		gradient: [-1, 1],
-		delta: [-13, 27],
-		width: 20,
-	},
-	{
-		gradient: [-1, 0],
-		delta: [-27, 13],
-		width: 20,
-	},
-	{
-		gradient: [-1, 0],
-		delta: [-120, 0],
-		width: 20,
-	},
-	{
-		gradient: [-1, -1],
-		delta: [-27, -13],
-		width: 20,
-		right: true,
-	},
-	{
-		gradient: [0, -1],
-		delta: [-13, -27],
-		width: 20,
-		up: true,
-	},
-	{
-		gradient: [1, -1],
-		delta: [13, -27],
-		width: 20,
-		left: true,
-	},
-	{
-		gradient: [1, 0],
-		delta: [27, -13],
-		width: 20,
-	},
-];
+function RaceTrack(svg, track, cars) {
+	const simulation = d3.forceSimulation();
 
-function RaceTrack(svg) {
-	const gradients = [];
-	OvalCourse.forEach((piece) => {
-		gradients.push(new TrackPiece(piece));
-	});
+	this.gradients = [];
 
 	const gTrack = document.createElementNS(SVG, 'g');
-	gTrack.setAttribute('id', 'trackPieces');
+	gTrack.setAttribute('id', 'gTrack');
 
 	const gCars = document.createElementNS(SVG, 'g');
 	gCars.setAttribute('id', 'gCars');
@@ -112,8 +127,8 @@ function RaceTrack(svg) {
 	}
 
 	Object.defineProperties(this, {
-		gradients: {
-			get: () => gradients,
+		simulation: {
+			get: () => simulation,
 		},
 		svg: {
 			get: () => svg,
@@ -124,25 +139,74 @@ function RaceTrack(svg) {
 		gCars: {
 			get: () => gCars,
 		},
-	})
+	});
+
+	if (track instanceof Array) {
+		this.setTrack(track);
+	}
+	if (cars instanceof Array) {
+		this.setCars(cars);
+	}
 }
 Object.defineProperties(RaceTrack.prototype, {
-	draw: {
+	init: {
 		enumerable: true,
 		value() {
 			if (!(this.svg instanceof SVGElement)) {
-				throw new Error('draw requires valid svg element!');
+				throw new Error('RaceTrack.init requires valid svg element!');
 			}
 
-			if (!document.getElementById('trackPieces')) {
+			if (!this.svg.getElementById('gTrack')) {
 				this.svg.appendChild(this.gTrack);
+			}
+			if (!this.svg.getElementById('gCars')) {
 				this.svg.appendChild(this.gCars);
 			}
 
+			console.log('Sam, simulation:', this.simulation);
+
+			// TODO: Place Cars on Starting Line
+			this.simulation.nodes().forEach((car) => {
+				car.x = 0;
+				car.y = 0;
+				car.vx = 0;
+				car.vy = 0;
+			});
+			this.moveCars();
+
+			this.simulation.on('tick', () => {
+				this.moveCars();
+			});
+
+			return this;
+		},
+	},
+	moveCars: {
+		value() {
+			// Move Cars!
+			this.simulation.nodes().forEach((node) => {
+				node.ele.setAttribute('cx', node.x);
+				node.ele.setAttribute('cy', node.y);
+			});
+		},
+	},
+	setTrack: {
+		enumerable: true,
+		value(track) {
+			this.gradients = [];
+			track.forEach((piece, i) => {
+				if (piece instanceof TrackPiece) {
+					this.simulation.force(`piece${i}x`, piece.fx).force(`piece${i}y`, piece.fy);
+					this.gradients.push(piece);
+				}
+			});
+
+			// Add Track Pieces to SVG
 			let buildPosition = [0, 0];
 			const extrema = [[0, 0], [0, 0]];
 			const rails = [[], []];
 
+			this.gTrack.innerHTML = '';
 			this.gradients.forEach((grad, i) => {
 				// Move build position
 				buildPosition[x] += grad.delta[x];
@@ -180,6 +244,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.gTrack.appendChild(elLine);
 			});
 
+			// Draw railings along track
 			rails.forEach((rail) => {
 				rail.push(rail[0]);
 				const elLine = document.createElementNS(SVG, 'path');
@@ -191,6 +256,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.gTrack.appendChild(elLine);
 			});
 
+			// Adjust SVG View Box
 			let width = extrema[x][1] - extrema[x][0] + 20;
 			let height = extrema[y][1] - extrema[y][0] + 20;
 			let x0 = extrema[x][0] - 10;
@@ -205,6 +271,20 @@ Object.defineProperties(RaceTrack.prototype, {
 			}
 
 			this.svg.setAttribute('viewBox', `${x0} ${y0} ${width} ${height}`);
+
+			return this;
+		},
+	},
+	setCars: {
+		enumerable: true,
+		value(cars) {
+			cars.forEach((car, i) => {
+				console.log('Sam, car:', car);
+				car.addToSVG(this.svg);
+				this.simulation.force(`car${i}fcollide`, car.fCollide);
+			});
+			this.simulation.nodes(cars);
+			return this;
 		},
 	},
 });
@@ -231,6 +311,8 @@ function Car(name, options) {
 			get: () => ele,
 		},
 	});
+
+	this.fCollide = d3.forceCollide(4);
 }
 Object.defineProperties(Car.prototype, {
 	addToSVG: {
