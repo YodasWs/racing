@@ -19,19 +19,10 @@ function Gradient(start, end, strength = 1) {
 	this.end = end;
 }
 
-function TrackPiece(style) {
-	switch (style) {
-		case 'curve':
-			this.gradient = new Gradient([1, 0], [0, 1]);
-			break;
-		case 'straight':
-		default:
-			this.gradient = new Gradient([1, 0], [1, 0]);
-	}
+function TrackPiece() {
 }
 
 function RaceTrack(svg) {
-	const pieces = [];
 	const gradients = [
 		{
 			gradient: [1, 0],
@@ -94,10 +85,6 @@ function RaceTrack(svg) {
 	];
 
 	Object.defineProperties(this, {
-		pieces: {
-			enumerable: true,
-			value: pieces,
-		},
 		gradients: {
 			get: () => gradients,
 		},
