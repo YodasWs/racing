@@ -17,6 +17,8 @@ function TrackPiece(options) {
 	this.gradient = options.gradient || [1, 0];
 	this.delta = options.delta || [0, 0];
 	this.width = options.width || 20;
+	this.right = options.right || false;
+	this.left = options.left || false;
 	this.up = options.up || false;
 }
 
@@ -57,10 +59,10 @@ const OvalCourse = [
 		width: 20,
 	},
 	{
-		gradient: [1, -1],
+		gradient: [-1, -1],
 		delta: [-27, -13],
 		width: 20,
-		up: true,
+		right: true,
 	},
 	{
 		gradient: [0, -1],
@@ -69,10 +71,10 @@ const OvalCourse = [
 		up: true,
 	},
 	{
-		gradient: [-1, -1],
+		gradient: [1, -1],
 		delta: [13, -27],
 		width: 20,
-		up: true,
+		left: true,
 	},
 	{
 		gradient: [1, 0],
@@ -111,6 +113,8 @@ Object.defineProperties(RaceTrack.prototype, {
 
 				// Rotate to gradient
 				let α = Math.acos(grad.gradient[x] / Math.hypot(...grad.gradient));
+				if (grad.left) α -= Math.PI / 2;
+				if (grad.right) α += Math.PI / 2;
 				if (grad.up) α += Math.PI;
 				const points = {
 					x1: buildPosition[x] + grad.width * Math.sin(α),
@@ -150,7 +154,6 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.svg.appendChild(elLine);
 			});
 
-			console.log('Sam, extrema:', extrema);
 			let width = extrema[x][1] - extrema[x][0] + 20;
 			let height = extrema[y][1] - extrema[y][0] + 20;
 			let x0 = extrema[x][0] - 10;
@@ -164,12 +167,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				x0 = (extrema[x][0] + extrema[x][1] - height) / 2;
 			}
 
-			this.svg.setAttribute(
-				'viewBox',
-				`${x0} ${y0}
-				${width} ${height}`
-				.replace(/\s+/g, ' '),
-			);
+			this.svg.setAttribute('viewBox', `${x0} ${y0} ${width} ${height}`);
 		},
 	},
 });
