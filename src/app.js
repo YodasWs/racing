@@ -8,9 +8,20 @@ yodasws.page('home').setRoute({
 	route: '/',
 }).on('load', () => {
 	const svg = document.querySelector('svg#scene');
+
+	const simulation = d3.forceSimulation();
+	const alice = new Car('Alice', {
+		color: 'lightgreen',
+		color2: 'orange',
+	});
+	simulation.nodes([
+		alice,
+	]);
+
 	const raceTrack = new RaceTrack(svg);
 	console.log('Sam, raceTrack:', raceTrack);
 	raceTrack.draw();
+	alice.addToSVG(svg);
 });
 
 function TrackPiece(options) {
@@ -89,6 +100,17 @@ function RaceTrack(svg) {
 		gradients.push(new TrackPiece(piece));
 	});
 
+	const gTrack = document.createElementNS(SVG, 'g');
+	gTrack.setAttribute('id', 'trackPieces');
+
+	const gCars = document.createElementNS(SVG, 'g');
+	gCars.setAttribute('id', 'gCars');
+
+	if (svg instanceof SVGElement) {
+		svg.appendChild(gTrack);
+		svg.appendChild(gCars);
+	}
+
 	Object.defineProperties(this, {
 		gradients: {
 			get: () => gradients,
@@ -96,12 +118,27 @@ function RaceTrack(svg) {
 		svg: {
 			get: () => svg,
 		},
+		gTrack: {
+			get: () => gTrack,
+		},
+		gCars: {
+			get: () => gCars,
+		},
 	})
 }
 Object.defineProperties(RaceTrack.prototype, {
 	draw: {
 		enumerable: true,
 		value() {
+			if (!(this.svg instanceof SVGElement)) {
+				throw new Error('draw requires valid svg element!');
+			}
+
+			if (!document.getElementById('trackPieces')) {
+				this.svg.appendChild(this.gTrack);
+				this.svg.appendChild(this.gCars);
+			}
+
 			let buildPosition = [0, 0];
 			const extrema = [[0, 0], [0, 0]];
 			const rails = [[], []];
@@ -140,7 +177,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				if (i === 0) {
 					elLine.classList.add('start-line');
 				}
-				this.svg.appendChild(elLine);
+				this.gTrack.appendChild(elLine);
 			});
 
 			rails.forEach((rail) => {
@@ -151,7 +188,7 @@ Object.defineProperties(RaceTrack.prototype, {
 					d.push(point.join(','));
 				});
 				elLine.setAttribute('d', 'M' + d.join('L'));
-				this.svg.appendChild(elLine);
+				this.gTrack.appendChild(elLine);
 			});
 
 			let width = extrema[x][1] - extrema[x][0] + 20;
@@ -168,6 +205,39 @@ Object.defineProperties(RaceTrack.prototype, {
 			}
 
 			this.svg.setAttribute('viewBox', `${x0} ${y0} ${width} ${height}`);
+		},
+	},
+});
+
+function Car(name, options) {
+	const ele = document.createElementNS(SVG, 'circle');
+	ele.classList.add('car');
+
+	if (typeof options.color === 'string') {
+		ele.setAttribute('fill', options.color);
+	}
+
+	if (typeof options.color2 === 'string') {
+		ele.setAttribute('stroke-width', '0.5px');
+		ele.setAttribute('stroke', options.color2);
+	}
+
+	Object.defineProperties(this, {
+		name: {
+			enumerable: true,
+			get: () => name,
+		},
+		ele: {
+			get: () => ele,
+		},
+	});
+}
+Object.defineProperties(Car.prototype, {
+	addToSVG: {
+		enumerable: true,
+		value(svg) {
+			svg.getElementById('gCars').appendChild(this.ele);
+			return this;
 		},
 	},
 });
