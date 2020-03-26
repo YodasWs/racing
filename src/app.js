@@ -102,12 +102,35 @@ function TrackPiece(options) {
 	this.left = options.left || false;
 	this.up = options.up || false;
 
-	this.fx = d3.forceX().x((node, i) => {
-		return 10;
-	}).strength(0.001);
-	this.fy = d3.forceY().y((node, i) => {
-		return 10;
-	}).strength(0.001);
+	const hypot = Math.hypot(...this.gradient)
+	let α = Math.acos(this.gradient[x] / hypot);
+	if (this.left) α -= Math.PI / 2;
+	if (this.right) α += Math.PI / 2;
+	if (this.up) α += Math.PI;
+
+	// Don't apply X-force on horizontal lines
+	if (![
+		-Math.PI / 2,
+		Math.PI / 2,
+		3 * Math.PI / 2,
+	].some(a => Math.abs(α - a) < Number.EPSILON)) {
+		this.fx = d3.forceX().x((node, i) => {
+			// TODO: Do not apply to Cars outside piece
+			return -50;
+		}).strength(hypot * Math.cos(α));
+	}
+
+	// Don't apply Y-force on vertical lines
+	if (![
+		0,
+		Math.PI,
+		2 * Math.PI,
+	].some(a => Math.abs(α - a) < Number.EPSILON)) {
+		this.fy = d3.forceY().y((node, i) => {
+			// TODO: Do not apply to Cars outside piece
+			return 50;
+		}).strength(hypot * Math.sin(α));
+	}
 }
 
 function RaceTrack(svg, track, cars) {
@@ -163,8 +186,6 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.svg.appendChild(this.gCars);
 			}
 
-			console.log('Sam, simulation:', this.simulation);
-
 			// TODO: Place Cars on Starting Line
 			this.simulation.nodes().forEach((car) => {
 				car.x = 0;
@@ -183,11 +204,9 @@ Object.defineProperties(RaceTrack.prototype, {
 	},
 	moveCars: {
 		value() {
+			// TODO: Discern which piece of track the car is on
 			// Move Cars!
-			this.simulation.nodes().forEach((node) => {
-				node.ele.setAttribute('cx', node.x);
-				node.ele.setAttribute('cy', node.y);
-			});
+			d3.selectAll('#gCars circle').attr('cx', d => d.x).attr('cy', d => d.y);
 		},
 	},
 	setTrack: {
@@ -196,7 +215,8 @@ Object.defineProperties(RaceTrack.prototype, {
 			this.gradients = [];
 			track.forEach((piece, i) => {
 				if (piece instanceof TrackPiece) {
-					this.simulation.force(`piece${i}x`, piece.fx).force(`piece${i}y`, piece.fy);
+					if (piece.fx) this.simulation.force(`piece${i}x`, piece.fx);
+					if (piece.fy) this.simulation.force(`piece${i}y`, piece.fy);
 					this.gradients.push(piece);
 				}
 			});
@@ -278,11 +298,10 @@ Object.defineProperties(RaceTrack.prototype, {
 	setCars: {
 		enumerable: true,
 		value(cars) {
-			cars.forEach((car, i) => {
-				console.log('Sam, car:', car);
-				car.addToSVG(this.svg);
-				this.simulation.force(`car${i}fcollide`, car.fCollide);
-			});
+			d3.select('svg #gCars').selectAll('circle')
+				.data(cars).enter().append('circle').classed('car', true)
+				.attr('fill', d => d.color).attr('stroke', d => d.color2)
+				.attr('cx', d => d.x).attr('cy', d => d.y);
 			this.simulation.nodes(cars);
 			return this;
 		},
@@ -296,6 +315,7 @@ function Car(name, options) {
 	if (typeof options.color === 'string') {
 		ele.setAttribute('fill', options.color);
 	}
+	Object.assign(this, options);
 
 	if (typeof options.color2 === 'string') {
 		ele.setAttribute('stroke-width', '0.5px');
@@ -315,11 +335,4 @@ function Car(name, options) {
 	this.fCollide = d3.forceCollide(4);
 }
 Object.defineProperties(Car.prototype, {
-	addToSVG: {
-		enumerable: true,
-		value(svg) {
-			svg.getElementById('gCars').appendChild(this.ele);
-			return this;
-		},
-	},
 });
