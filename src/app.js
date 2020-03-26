@@ -39,6 +39,11 @@ function RaceTrack(svg) {
 			width: 20,
 		},
 		{
+			gradient: [1, 0],
+			delta: [20, 0],
+			width: 20,
+		},
+		{
 			gradient: [1, 1],
 			delta: [27, 13],
 			width: 20,
