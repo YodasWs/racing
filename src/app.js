@@ -93,6 +93,10 @@ yodasws.page('home').setRoute({
 			raceTrack.simulation.restart();
 		}, 500);
 	});
+
+	document.getElementById('btnStop').addEventListener('click', () => {
+		raceTrack.simulation.stop();
+	});
 });
 
 let pieces;
