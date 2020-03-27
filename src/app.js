@@ -116,8 +116,10 @@ function TrackPiece(options) {
 	].some(a => Math.abs(α - a) < Number.EPSILON)) {
 		this.fx = d3.forceX().x((node, i) => {
 			// TODO: Do not apply to Cars outside piece
-			return -50;
-		}).strength(hypot * Math.cos(α));
+			return -100;
+		})
+			.strength(0.001)
+			// .strength(hypot * Math.cos(α));
 	}
 
 	// Don't apply Y-force on vertical lines
@@ -128,8 +130,10 @@ function TrackPiece(options) {
 	].some(a => Math.abs(α - a) < Number.EPSILON)) {
 		this.fy = d3.forceY().y((node, i) => {
 			// TODO: Do not apply to Cars outside piece
-			return 50;
-		}).strength(hypot * Math.sin(α));
+			return 40;
+		})
+			.strength(0.001)
+			// .strength(hypot * Math.sin(α));
 	}
 }
 
@@ -194,9 +198,17 @@ Object.defineProperties(RaceTrack.prototype, {
 				car.vy = 0;
 			});
 			this.moveCars();
+			this.simulation.alphaDecay(0);
 
 			this.simulation.on('tick', () => {
+				this.simulation.nodes(this.simulation.nodes());
+				console.log('hi sam');
 				this.moveCars();
+				if (Math.abs(this.simulation.nodes()[0].vx) < 0.05
+					&& Math.abs(this.simulation.nodes()[0].vy) < 0.05) {
+					this.simulation.stop();
+					console.log('Sam, stopped!');
+				}
 			});
 
 			return this;
@@ -212,14 +224,7 @@ Object.defineProperties(RaceTrack.prototype, {
 	setTrack: {
 		enumerable: true,
 		value(track) {
-			this.gradients = [];
-			track.forEach((piece, i) => {
-				if (piece instanceof TrackPiece) {
-					if (piece.fx) this.simulation.force(`piece${i}x`, piece.fx);
-					if (piece.fy) this.simulation.force(`piece${i}y`, piece.fy);
-					this.gradients.push(piece);
-				}
-			});
+			this.gradients = track.filter(piece => piece instanceof TrackPiece);
 
 			// Add Track Pieces to SVG
 			let buildPosition = [0, 0];
@@ -231,6 +236,17 @@ Object.defineProperties(RaceTrack.prototype, {
 				// Move build position
 				buildPosition[x] += grad.delta[x];
 				buildPosition[y] += grad.delta[y];
+
+				grad.x = buildPosition[x];
+				grad.y = buildPosition[y];
+				if (grad.fx) {
+					// grad.fx.x(grad.x);
+					this.simulation.force(`piece${i}x`, grad.fx);
+				}
+				if (grad.fy) {
+					// grad.fy.y(grad.y);
+					this.simulation.force(`piece${i}y`, grad.fy);
+				}
 
 				// Rotate to gradient
 				let α = Math.acos(grad.gradient[x] / Math.hypot(...grad.gradient));
