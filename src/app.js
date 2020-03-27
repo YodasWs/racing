@@ -82,6 +82,7 @@ yodasws.page('home').setRoute({
 
 	console.log('Sam, nodes:', raceTrack.simulation.nodes());
 	raceTrack.simulation.stop();
+	raceTrack.init();
 
 	document.getElementById('btnStart').addEventListener('click', () => {
 		console.log('Sam, start!');
@@ -93,6 +94,9 @@ yodasws.page('home').setRoute({
 		}, 500);
 	});
 });
+
+let pieces;
+const forceMultiplier = 0.1;
 
 function TrackPiece(options) {
 	this.gradient = options.gradient || [1, 0];
@@ -107,6 +111,7 @@ function TrackPiece(options) {
 	if (this.left) α -= Math.PI / 2;
 	if (this.right) α += Math.PI / 2;
 	if (this.up) α += Math.PI;
+	this.α = α;
 
 	// Don't apply X-force on horizontal lines
 	if (![
@@ -115,11 +120,14 @@ function TrackPiece(options) {
 		3 * Math.PI / 2,
 	].some(a => Math.abs(α - a) < Number.EPSILON)) {
 		this.fx = d3.forceX().x((node, i) => {
+			return this.x;
+		}).strength((node, i) => {
 			// TODO: Do not apply to Cars outside piece
-			return -100;
-		})
-			.strength(0.001)
-			// .strength(hypot * Math.cos(α));
+			if (node.trackAhead.length === 0) return 0;
+			if (node.trackAhead[0] !== this) return 0;
+			console.log('Sam, using strength', pieces.indexOf(node.trackAhead[0]), 'x');
+			return hypot * Math.cos(α) * forceMultiplier;
+		});
 	}
 
 	// Don't apply Y-force on vertical lines
@@ -129,11 +137,14 @@ function TrackPiece(options) {
 		2 * Math.PI,
 	].some(a => Math.abs(α - a) < Number.EPSILON)) {
 		this.fy = d3.forceY().y((node, i) => {
+			return this.y;
+		}).strength((node, i) => {
 			// TODO: Do not apply to Cars outside piece
-			return 40;
-		})
-			.strength(0.001)
-			// .strength(hypot * Math.sin(α));
+			if (node.trackAhead.length === 0) return 0;
+			if (node.trackAhead[0] !== this) return 0;
+			console.log('Sam, using strength', pieces.indexOf(node.trackAhead[0]), 'x');
+			return hypot * Math.sin(α) * forceMultiplier;
+		});
 	}
 }
 
@@ -191,11 +202,14 @@ Object.defineProperties(RaceTrack.prototype, {
 			}
 
 			// TODO: Place Cars on Starting Line
-			this.simulation.nodes().forEach((car) => {
-				car.x = 0;
+			this.simulation.nodes().forEach((car, i) => {
+				car.x = -10;
 				car.y = 0;
 				car.vx = 0;
 				car.vy = 0;
+				this.simulation.force(`car${i}Collide`, car.fCollide);
+				car.trackAhead = this.gradients.slice();
+				pieces = this.gradients.slice();
 			});
 			this.moveCars();
 			this.simulation.alphaDecay(0);
@@ -204,8 +218,8 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.simulation.nodes(this.simulation.nodes());
 				console.log('hi sam');
 				this.moveCars();
-				if (Math.abs(this.simulation.nodes()[0].vx) < 0.05
-					&& Math.abs(this.simulation.nodes()[0].vy) < 0.05) {
+				if (Math.abs(this.simulation.nodes()[0].vx) < 0.005
+					&& Math.abs(this.simulation.nodes()[0].vy) < 0.005) {
 					this.simulation.stop();
 					console.log('Sam, stopped!');
 				}
@@ -219,6 +233,38 @@ Object.defineProperties(RaceTrack.prototype, {
 			// TODO: Discern which piece of track the car is on
 			// Move Cars!
 			d3.selectAll('#gCars circle').attr('cx', d => d.x).attr('cy', d => d.y);
+			this.simulation.nodes().forEach((car) => {
+				car.x
+				car.y
+				car.trackAhead[0]
+
+			if (car.trackAhead[0].α > -Math.PI / 2 && car.trackAhead[0].α < Math.PI / 2 && car.x > car.trackAhead[0].x) {
+				car.nextPiece = true;
+			}
+			if (car.trackAhead[0].α > Math.PI / 2 && car.x < car.trackAhead[0].x) {
+				car.nextPiece = true;
+			}
+			if (car.trackAhead[0].α > 0 && car.trackAhead[0].α < Math.PI && car.y > car.trackAhead[0].y) {
+				car.nextPiece = true;
+			}
+			if ((car.trackAhead[0].α < 0 || car.trackAhead[0].α > Math.PI) && car.y < car.trackAhead[0].y) {
+				car.nextPiece = true;
+			}
+
+				if (car.nextPiece) {
+					console.log('Sam, change track piece!');
+					car.trackAhead.push(car.trackAhead.splice(0, 1));
+					car.nextPiece = false;
+				}
+
+				if (car.x < this.extrema[x][0]
+				|| car.x > this.extrema[x][1]
+				|| car.y < this.extrema[y][0]
+				|| car.y > this.extrema[y][1]) {
+					console.log('Sam, car out of bounds!');
+					this.simulation.stop();
+				}
+			});
 		},
 	},
 	setTrack: {
@@ -280,6 +326,8 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.gTrack.appendChild(elLine);
 			});
 
+			this.extrema = extrema;
+
 			// Draw railings along track
 			rails.forEach((rail) => {
 				rail.push(rail[0]);
@@ -331,13 +379,17 @@ function Car(name, options) {
 	if (typeof options.color === 'string') {
 		ele.setAttribute('fill', options.color);
 	}
-	Object.assign(this, options);
 
 	if (typeof options.color2 === 'string') {
 		ele.setAttribute('stroke-width', '0.5px');
 		ele.setAttribute('stroke', options.color2);
 	}
 
+	this.trackAhead = [];
+
+	let nextPiece = false;
+
+	Object.assign(this, options);
 	Object.defineProperties(this, {
 		name: {
 			enumerable: true,
@@ -345,6 +397,14 @@ function Car(name, options) {
 		},
 		ele: {
 			get: () => ele,
+		},
+		nextPiece: {
+			set(val) {
+				if (typeof val === 'boolean') {
+					nextPiece = val;
+				}
+			},
+			get: () => nextPiece,
 		},
 	});
 
