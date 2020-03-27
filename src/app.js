@@ -54,19 +54,16 @@ yodasws.page('home').setRoute({
 			gradient: [-1, -1],
 			delta: [-27, -13],
 			width: 20,
-			right: true,
 		},
 		{
 			gradient: [0, -1],
 			delta: [-13, -27],
 			width: 20,
-			up: true,
 		},
 		{
 			gradient: [1, -1],
 			delta: [13, -27],
 			width: 20,
-			left: true,
 		},
 		{
 			gradient: [1, 0],
@@ -106,15 +103,12 @@ function TrackPiece(options) {
 	this.gradient = options.gradient || [1, 0];
 	this.delta = options.delta || [0, 0];
 	this.width = options.width || 20;
-	this.right = options.right || false;
-	this.left = options.left || false;
-	this.up = options.up || false;
 
 	const hypot = Math.hypot(...this.gradient)
 	let α = Math.acos(this.gradient[x] / hypot);
-	if (this.left) α -= Math.PI / 2;
-	if (this.right) α += Math.PI / 2;
-	if (this.up) α += Math.PI;
+	if (Math.sign(this.gradient[y]) === -1) {
+		α = 2 * Math.PI - α;
+	}
 	this.α = α;
 
 	// Don't apply X-force on horizontal lines
@@ -300,9 +294,9 @@ Object.defineProperties(RaceTrack.prototype, {
 
 				// Rotate to gradient
 				let α = Math.acos(grad.gradient[x] / Math.hypot(...grad.gradient));
-				if (grad.left) α -= Math.PI / 2;
-				if (grad.right) α += Math.PI / 2;
-				if (grad.up) α += Math.PI;
+				if (Math.sign(grad.gradient[y]) === -1) {
+					α = 2 * Math.PI - α;
+				}
 				const points = {
 					x1: buildPosition[x] + grad.width * Math.sin(α),
 					y1: buildPosition[y] - grad.width * Math.cos(α),
