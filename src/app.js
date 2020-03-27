@@ -97,7 +97,10 @@ yodasws.page('home').setRoute({
 });
 
 let pieces;
-const forceMultiplier = 0.1;
+const forceMultiplier = 0.7;
+const gravity = 0.5;
+
+let j = 0;
 
 function TrackPiece(options) {
 	this.gradient = options.gradient || [1, 0];
@@ -111,39 +114,45 @@ function TrackPiece(options) {
 	}
 	this.α = α;
 
-	// Don't apply X-force on horizontal lines
-	if (![
-		-Math.PI / 2,
-		Math.PI / 2,
-		3 * Math.PI / 2,
-	].some(a => Math.abs(α - a) < Number.EPSILON)) {
-		this.fx = d3.forceX().x((node, i) => {
-			return this.x;
-		}).strength((node, i) => {
-			// TODO: Do not apply to Cars outside piece
-			if (node.trackAhead.length === 0) return 0;
-			if (node.trackAhead[0] !== this) return 0;
-			console.log('Sam, using strength', pieces.indexOf(node.trackAhead[0]), 'x');
-			return hypot * Math.cos(α) * forceMultiplier;
-		});
-	}
+	this.j = j++;
 
-	// Don't apply Y-force on vertical lines
-	if (![
-		0,
-		Math.PI,
-		2 * Math.PI,
-	].some(a => Math.abs(α - a) < Number.EPSILON)) {
-		this.fy = d3.forceY().y((node, i) => {
-			return this.y;
-		}).strength((node, i) => {
-			// TODO: Do not apply to Cars outside piece
-			if (node.trackAhead.length === 0) return 0;
-			if (node.trackAhead[0] !== this) return 0;
-			console.log('Sam, using strength', pieces.indexOf(node.trackAhead[0]), 'x');
-			return hypot * Math.sin(α) * forceMultiplier;
-		});
-	}
+	this.force = (() => {
+		let nodes = [];
+		const piece = this;
+
+		function force(alpha) {
+			nodes.forEach((node) => {
+				// Do not apply to Cars outside piece
+				if (node.trackAhead.length === 0) return;
+				if (node.trackAhead[0] !== piece) return;
+				// Apply force in direction to gradient
+				// This is moving v to become g
+
+				// TODO: we want to apply force in the direction of g - v, with 
+				let acceleration = [
+					piece.gradient[x] - node.vx,
+					piece.gradient[y] - node.vy,
+				];
+				const a = Math.hypot(...acceleration);
+				acceleration = acceleration.map(d => d / a);
+
+				let β = Math.acos(acceleration[x]);
+				if (Math.sign(acceleration[y]) === -1) β = 2 * Math.PI - β;
+
+				node.vx += gravity * Math.cos(β) * alpha;
+				node.vy += gravity * Math.sin(β) * alpha;
+
+				// TODO: Determine when the car moves off this piece
+				console.log('Sam, on piece', piece.j);
+			});
+		}
+
+		force.initialize = (_) => {
+			nodes = _;
+		};
+
+		return force;
+	})();
 }
 
 function RaceTrack(svg, track, cars) {
@@ -198,6 +207,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			if (!this.svg.getElementById('gCars')) {
 				this.svg.appendChild(this.gCars);
 			}
+			this.simulation.force('fCollide', d3.forceCollide(4));
 
 			// TODO: Place Cars on Starting Line
 			this.simulation.nodes().forEach((car, i) => {
@@ -205,18 +215,24 @@ Object.defineProperties(RaceTrack.prototype, {
 				car.y = 0;
 				car.vx = 0;
 				car.vy = 0;
-				this.simulation.force(`car${i}Collide`, car.fCollide);
+				// this.simulation.force(`car${i}Collide`, car.fCollide);
 				car.trackAhead = this.gradients.slice();
 				pieces = this.gradients.slice();
 			});
 			this.moveCars();
 			this.simulation.alphaDecay(0);
+			this.simulation.velocityDecay(0.01);
+
+			let t = 0;
 
 			this.simulation.on('tick', () => {
+				// TODO: Build forces that don't require this expense of power
 				this.simulation.nodes(this.simulation.nodes());
 				console.log('hi sam');
 				this.moveCars();
-				if (Math.abs(this.simulation.nodes()[0].vx) < 0.005
+				console.log('Sam, vx:', this.simulation.nodes()[0].vx);
+				console.log('Sam, vy:', this.simulation.nodes()[0].vy);
+				if (t++ > 10 && Math.abs(this.simulation.nodes()[0].vx) < 0.005
 					&& Math.abs(this.simulation.nodes()[0].vy) < 0.005) {
 					this.simulation.stop();
 					console.log('Sam, stopped!');
@@ -236,6 +252,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				car.y
 				car.trackAhead[0]
 
+				// TODO: This nextPiece will be calculated by the force
 			if (car.trackAhead[0].α > -Math.PI / 2 && car.trackAhead[0].α < Math.PI / 2 && car.x > car.trackAhead[0].x) {
 				car.nextPiece = true;
 			}
@@ -251,7 +268,9 @@ Object.defineProperties(RaceTrack.prototype, {
 
 				if (car.nextPiece) {
 					console.log('Sam, change track piece!');
-					car.trackAhead.push(car.trackAhead.splice(0, 1));
+					car.trackAhead.push(...car.trackAhead.splice(0, 1));
+					console.log('Sam, now on piece', pieces.indexOf(car.trackAhead[0]));
+					console.log('Sam, trackAhead:', car.trackAhead);
 					car.nextPiece = false;
 				}
 
@@ -283,13 +302,13 @@ Object.defineProperties(RaceTrack.prototype, {
 
 				grad.x = buildPosition[x];
 				grad.y = buildPosition[y];
-				if (grad.fx) {
-					// grad.fx.x(grad.x);
-					this.simulation.force(`piece${i}x`, grad.fx);
-				}
-				if (grad.fy) {
-					// grad.fy.y(grad.y);
-					this.simulation.force(`piece${i}y`, grad.fy);
+				d3.select('svg #gTrack').append('circle')
+					.attr('cx', grad.x).attr('cy', grad.y)
+					.attr('r', 2).attr('fill', 'red');
+
+				// Add track forces to simulation
+				if (grad.force) {
+					this.simulation.force(`piece${i}`, grad.force);
 				}
 
 				// Rotate to gradient
