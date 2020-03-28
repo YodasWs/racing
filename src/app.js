@@ -138,10 +138,8 @@ function TrackPiece(options) {
 				// Do not apply to Cars outside piece
 				if (node.trackAhead.length === 0) return;
 				if (node.trackAhead[0] !== piece) return;
-				// Apply force in direction to gradient
-				// This is moving v to become g
 
-				// TODO: we want to apply force in the direction of g - v, with 
+				// Apply force in direction g-v to move v towards g
 				let acceleration = [
 					piece.gradient[x] - node.vx,
 					piece.gradient[y] - node.vy,
@@ -152,11 +150,40 @@ function TrackPiece(options) {
 				let β = Math.acos(acceleration[x]);
 				if (Math.sign(acceleration[y]) === -1) β = 2 * Math.PI - β;
 
+				// TODO: If pointed away from line, need a strong force toward nearest endpoint
+				// Um, this pushes v to g, which then leaves a oscillating back and forth!
+				// TODO: cos θ = a*g/|a||g|, then adjust β to give -π/2 < θ < π/2
+
 				node.vx += gravity * Math.cos(β) * alpha;
 				node.vy += gravity * Math.sin(β) * alpha;
 
-				// TODO: Determine when the car moves off this piece
 				console.log('Sam, on piece', piece.j);
+				console.log('Sam, acceleration:', acceleration);
+				console.log('Sam, β:', β * 180 / Math.PI);
+				console.log('Sam, vx:', node.vx);
+				console.log('Sam, vy:', node.vy);
+
+				if (typeof piece.m === 'number' && typeof piece.b === 'number') {
+					const y0 = piece.m * node.x + piece.b;
+					if (piece.α !== 0 && piece.α !== Math.PI) {
+						if (piece.α > 0 && piece.α < Math.PI && y0 < node.y) {
+							node.nextPiece = true;
+						}
+						if (piece.α > Math.PI && y0 > node.y) {
+							node.nextPiece = true;
+						}
+					}
+					if (piece.α === 0 && piece.x < node.x) {
+						node.nextPiece = true;
+					}
+					if (piece.α === Math.PI && piece.x > node.x) {
+						node.nextPiece = true;
+					}
+					if (node.nextPiece) {
+						console.log('Sam, nextPiece,', y0, node.y, piece.α);
+					}
+				}
+				// TODO: Determine when the car moves off this piece
 			});
 		}
 
@@ -266,6 +293,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				car.trackAhead[0]
 
 				// TODO: This nextPiece will be calculated by the force
+				/*
 			if (car.trackAhead[0].α > -Math.PI / 2 && car.trackAhead[0].α < Math.PI / 2 && car.x > car.trackAhead[0].x) {
 				car.nextPiece = true;
 			}
@@ -278,6 +306,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			if ((car.trackAhead[0].α < 0 || car.trackAhead[0].α > Math.PI) && car.y < car.trackAhead[0].y) {
 				car.nextPiece = true;
 			}
+			/**/
 
 				if (car.nextPiece) {
 					console.log('Sam, change track piece!');
@@ -287,10 +316,10 @@ Object.defineProperties(RaceTrack.prototype, {
 					car.nextPiece = false;
 				}
 
-				if (car.x < this.extrema[x][0]
-				|| car.x > this.extrema[x][1]
-				|| car.y < this.extrema[y][0]
-				|| car.y > this.extrema[y][1]) {
+				if (car.x < this.extrema[x][0] - 10
+					|| car.x > this.extrema[x][1] + 10
+					|| car.y < this.extrema[y][0] - 10
+					|| car.y > this.extrema[y][1] + 10) {
 					console.log('Sam, car out of bounds!');
 					this.simulation.stop();
 				}
@@ -335,6 +364,9 @@ Object.defineProperties(RaceTrack.prototype, {
 					x2: buildPosition[x] - grad.width * Math.sin(α),
 					y2: buildPosition[y] + grad.width * Math.cos(α),
 				};
+
+				grad.m = (points.y2 - points.y1) / (points.x2 - points.x1);
+				grad.b = -grad.m * points.x1 - points.y1;
 
 				// Draw line
 				const elLine = document.createElementNS(SVG, 'line');
