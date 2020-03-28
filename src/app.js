@@ -91,14 +91,27 @@ yodasws.page('home').setRoute({
 		}, 500);
 	});
 
-	document.getElementById('btnStop').addEventListener('click', () => {
-		raceTrack.simulation.stop();
+	document.getElementById('btnPause').addEventListener('click', (evt) => {
+		switch (evt.currentTarget.innerText) {
+			case 'Pause':
+				raceTrack.simulation.stop();
+				evt.currentTarget.innerText = 'Play';
+				break;
+			case 'Play':
+				raceTrack.simulation.restart();
+				evt.currentTarget.innerText = 'Pause';
+				break;
+		}
+	});
+
+	document.getElementById('btnTick').addEventListener('click', (evt) => {
+		raceTrack.simulation.tick();
+		raceTrack.onTick();
 	});
 });
 
 let pieces;
-const forceMultiplier = 0.7;
-const gravity = 0.5;
+const gravity = 1;
 
 let j = 0;
 
@@ -223,23 +236,23 @@ Object.defineProperties(RaceTrack.prototype, {
 			this.simulation.alphaDecay(0);
 			this.simulation.velocityDecay(0.01);
 
-			let t = 0;
-
 			this.simulation.on('tick', () => {
-				// TODO: Build forces that don't require this expense of power
-				this.simulation.nodes(this.simulation.nodes());
-				console.log('hi sam');
-				this.moveCars();
-				console.log('Sam, vx:', this.simulation.nodes()[0].vx);
-				console.log('Sam, vy:', this.simulation.nodes()[0].vy);
-				if (t++ > 10 && Math.abs(this.simulation.nodes()[0].vx) < 0.005
-					&& Math.abs(this.simulation.nodes()[0].vy) < 0.005) {
-					this.simulation.stop();
-					console.log('Sam, stopped!');
-				}
+				this.onTick();
 			});
 
 			return this;
+		},
+	},
+	onTick: {
+		value() {
+			// TODO: Build forces that don't require this expense of power
+			this.simulation.nodes(this.simulation.nodes());
+			this.moveCars();
+			if (Math.abs(this.simulation.nodes()[0].vx) < 0.005
+				&& Math.abs(this.simulation.nodes()[0].vy) < 0.005) {
+				this.simulation.stop();
+				console.log('Sam, stopped!');
+			}
 		},
 	},
 	moveCars: {
