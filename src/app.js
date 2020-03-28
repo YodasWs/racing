@@ -144,46 +144,97 @@ function TrackPiece(options) {
 					piece.gradient[x] - node.vx,
 					piece.gradient[y] - node.vy,
 				];
-				const a = Math.hypot(...acceleration);
+				let a = Math.hypot(...acceleration);
 				acceleration = acceleration.map(d => d / a);
-
-				let β = Math.acos(acceleration[x]);
-				if (Math.sign(acceleration[y]) === -1) β = 2 * Math.PI - β;
+				console.log('Sam, 1, acceleration:', acceleration);
 
 				// TODO: If pointed away from line, need a strong force toward nearest endpoint
 				// Um, this pushes v to g, which then leaves a oscillating back and forth!
-				// TODO: cos θ = a*g/|a||g|, then adjust β to give -π/2 < θ < π/2
+				// TODO: cos θ = a*v/|a||v|, then adjust to give -π/2 < θ < π/2
 
-				node.vx += gravity * Math.cos(β) * alpha;
-				node.vy += gravity * Math.sin(β) * alpha;
+				// If acceleration is pointed in the wrong direction, invert it
+				if (Math.hypot(node.vx, node.vy) !== 0) {
+					let θ = Math.acos((
+						acceleration[x] * node.vx
+						+ acceleration[y] * node.vy
+					) / Math.hypot(...acceleration) / Math.hypot(node.vx, node.vy));
+
+					if (θ > Math.PI / 2) {
+						acceleration = [0, 0];
+
+						/*
+						// Negate acceleration
+						acceleration = acceleration.map(d => -d);
+						console.log('Sam, θ:', θ * 180 / Math.PI);
+						console.log('Sam, 2, acceleration:', acceleration);
+
+						if (θ < Math.PI) {
+							// Vector perpendicular to velocity, normalized
+							let p = [];
+							if (node.vy !== 0) {
+								p = [-1, node.vx / node.vy];
+								p = p.map(d => d / Math.hypot(...p));
+								console.log('Sam, p:', p);
+							} else if (piece.gradient[y] !== 0) {
+								console.log('Sam, v:', node.vx, node.vy);
+								p = [0, Math.sign(piece.gradient[y]) * node.vx];
+								console.log('Sam, p:', p);
+								p = p.map(d => d / Math.hypot(...p));
+								console.log('Sam, p:', p);
+							}
+
+							// Dot product
+							const dp = acceleration[x] * p[x] + acceleration[y] * p[y];
+							acceleration = acceleration.map((d, i) => d - 2 * dp * p[i]);
+							console.log('Sam, 3, acceleration:', acceleration);
+						}
+						/**/
+					}
+				}
+
+				// Add gradient to acceleration to more strongly force movement in that direction
+				acceleration = acceleration.map((d, i) => d + piece.gradient[i]);
+
+				// Normalize acceleration and scale by gravity
+				a = Math.hypot(...acceleration);
+				acceleration = acceleration.map(d => d / a);
+				node.vx += gravity * acceleration[x] * alpha;
+				node.vy += gravity * acceleration[y] * alpha;
 
 				console.log('Sam, on piece', piece.j);
-				console.log('Sam, acceleration:', acceleration);
-				console.log('Sam, β:', β * 180 / Math.PI);
-				console.log('Sam, vx:', node.vx);
-				console.log('Sam, vy:', node.vy);
+				console.log('Sam, 4 acceleration:', acceleration);
+				console.log('Sam, v:', node.vx, node.vy);
+				console.log('Sam, node:', node.x, node.y);
 
-				if (typeof piece.m === 'number' && typeof piece.b === 'number') {
-					const y0 = piece.m * node.x + piece.b;
-					if (piece.α !== 0 && piece.α !== Math.PI) {
-						if (piece.α > 0 && piece.α < Math.PI && y0 < node.y) {
-							node.nextPiece = true;
-						}
-						if (piece.α > Math.PI && y0 > node.y) {
-							node.nextPiece = true;
-						}
-					}
-					if (piece.α === 0 && piece.x < node.x) {
+				const nextPosition = [node.x + node.vx, node.y, node.vy];
+				console.log('Sam, nextPosition:', nextPosition[x], nextPosition[y]);
+
+				// Determine when the car moves off this piece and onto the next
+				if (typeof piece.m === 'number'
+					&& typeof piece.b === 'number'
+					// If not vertical
+					&& Math.abs(piece.m) < Number.POSITIVE_INFINITY
+				) {
+					const y0 = piece.m * nextPosition[x] + piece.b;
+					console.log('Sam, y0,', piece.m, nextPosition[x], piece.b);
+					if (piece.α > 0 && piece.α < Math.PI && y0 < nextPosition[y]) {
 						node.nextPiece = true;
 					}
-					if (piece.α === Math.PI && piece.x > node.x) {
+					if (piece.α > Math.PI && y0 > nextPosition[y]) {
 						node.nextPiece = true;
 					}
 					if (node.nextPiece) {
-						console.log('Sam, nextPiece,', y0, node.y, piece.α);
+						console.log('Sam, nextPiece,', piece.α * 180 / Math.PI, y0, nextPosition[y], piece.α);
+					}
+				} else {
+					// Vertical, simply check x
+					if (piece.α === 0 && piece.x < nextPosition[x]) {
+						node.nextPiece = true;
+					}
+					if (piece.α === Math.PI && piece.x > nextPosition[x]) {
+						node.nextPiece = true;
 					}
 				}
-				// TODO: Determine when the car moves off this piece
 			});
 		}
 
@@ -255,7 +306,6 @@ Object.defineProperties(RaceTrack.prototype, {
 				car.y = 0;
 				car.vx = 0;
 				car.vy = 0;
-				// this.simulation.force(`car${i}Collide`, car.fCollide);
 				car.trackAhead = this.gradients.slice();
 				pieces = this.gradients.slice();
 			});
@@ -291,22 +341,6 @@ Object.defineProperties(RaceTrack.prototype, {
 				car.x
 				car.y
 				car.trackAhead[0]
-
-				// TODO: This nextPiece will be calculated by the force
-				/*
-			if (car.trackAhead[0].α > -Math.PI / 2 && car.trackAhead[0].α < Math.PI / 2 && car.x > car.trackAhead[0].x) {
-				car.nextPiece = true;
-			}
-			if (car.trackAhead[0].α > Math.PI / 2 && car.x < car.trackAhead[0].x) {
-				car.nextPiece = true;
-			}
-			if (car.trackAhead[0].α > 0 && car.trackAhead[0].α < Math.PI && car.y > car.trackAhead[0].y) {
-				car.nextPiece = true;
-			}
-			if ((car.trackAhead[0].α < 0 || car.trackAhead[0].α > Math.PI) && car.y < car.trackAhead[0].y) {
-				car.nextPiece = true;
-			}
-			/**/
 
 				if (car.nextPiece) {
 					console.log('Sam, change track piece!');
@@ -366,7 +400,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				};
 
 				grad.m = (points.y2 - points.y1) / (points.x2 - points.x1);
-				grad.b = -grad.m * points.x1 - points.y1;
+				grad.b = grad.m * points.x1 + points.y1;
 
 				// Draw line
 				const elLine = document.createElementNS(SVG, 'line');
@@ -469,8 +503,6 @@ function Car(name, options) {
 			get: () => nextPiece,
 		},
 	});
-
-	this.fCollide = d3.forceCollide(4);
 }
 Object.defineProperties(Car.prototype, {
 });
