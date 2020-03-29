@@ -404,8 +404,34 @@ Object.defineProperties(RaceTrack.prototype, {
 
 				// Draw line
 				const elLine = document.createElementNS(SVG, 'line');
-				rails[0].push([points.x1, points.y1]);
-				rails[1].push([points.x2, points.y2]);
+				rails[0].push({
+					before: [
+						points.x1 - grad.width * Math.cos(α),
+						points.y1 - grad.width * Math.sin(α),
+					],
+					is: [
+						points.x1,
+						points.y1,
+					],
+					after: [
+						points.x1 + grad.width * Math.cos(α),
+						points.y1 + grad.width * Math.sin(α),
+					],
+				});
+				rails[1].push({
+					before: [
+						points.x2 - grad.width * Math.cos(α) / 4,
+						points.y2 - grad.width * Math.sin(α) / 4,
+					],
+					is: [
+						points.x2,
+						points.y2,
+					],
+					after: [
+						points.x2 + grad.width * Math.cos(α) / 4,
+						points.y2 + grad.width * Math.sin(α) / 4,
+					],
+				});
 
 				extrema[x][0] = Math.min(extrema[x][0], points.x1, points.x2);
 				extrema[x][1] = Math.max(extrema[x][1], points.x1, points.x2);
@@ -429,10 +455,18 @@ Object.defineProperties(RaceTrack.prototype, {
 				rail.push(rail[0]);
 				const elLine = document.createElementNS(SVG, 'path');
 				const d = [];
-				rail.forEach((point) => {
-					d.push(point.join(','));
+				rail.forEach((point, i) => {
+					if (i === 0) {
+						d.push(`M${point.is.join(',')}`);
+					} else {
+						d.push(`C${[
+							rail[i - 1].after.join(' '),
+							point.before.join(' '),
+							point.is.join(' '),
+						].join(',')}`);
+					}
 				});
-				elLine.setAttribute('d', 'M' + d.join('L'));
+				elLine.setAttribute('d', d.join(''));
 				this.gTrack.appendChild(elLine);
 			});
 
