@@ -2,18 +2,14 @@
 const SVG = 'http://www.w3.org/2000/svg';
 const x = 0;
 const y = 1;
-const r = 4;
+const radius = 4;
+const strokeWidth: 1;
 
 yodasws.page('home').setRoute({
 	template: 'pages/home.html',
 	route: '/',
 }).on('load', () => {
 	const svg = document.querySelector('svg#scene');
-
-	const alice = new Car('Alice', {
-		color: 'lightgreen',
-		color2: 'orange',
-	});
 
 	const OvalCourse = [
 		{
@@ -74,7 +70,16 @@ yodasws.page('home').setRoute({
 	].map(piece => new TrackPiece(piece));
 
 	const raceTrack = new RaceTrack(svg, OvalCourse, [
-		alice,
+		new Car('Alice', {
+			color: 'lightgreen',
+			color2: 'orange',
+		}),
+		/*
+		new Car('Brooklyn', {
+			color: 'white',
+			color2: 'black',
+		}),
+		/**/
 	]);
 	console.log('Sam, raceTrack:', raceTrack);
 
@@ -251,6 +256,7 @@ function RaceTrack(svg, track, cars) {
 	const simulation = d3.forceSimulation();
 
 	this.gradients = [];
+	this.rails = [];
 
 	const gTrack = document.createElementNS(SVG, 'g');
 	gTrack.setAttribute('id', 'gTrack');
@@ -302,9 +308,9 @@ Object.defineProperties(RaceTrack.prototype, {
 			this.simulation.force('fCollide', d3.forceCollide(4));
 
 			// TODO: Place Cars on Starting Line
-			this.simulation.nodes().forEach((car) => {
-				car.x = -10;
-				car.y = 0;
+			this.simulation.nodes().forEach((car, i) => {
+				car.x = -10 * (i + 1);
+				car.y = -3 * Math.pow(-1, i);
 				car.vx = 0;
 				car.vy = 0;
 				car.trackAhead = this.gradients.slice();
@@ -339,16 +345,14 @@ Object.defineProperties(RaceTrack.prototype, {
 			// Move Cars!
 			d3.selectAll('#gCars circle').attr('cx', d => d.x).attr('cy', d => d.y);
 			this.simulation.nodes().forEach((car) => {
-				car.x
-				car.y
-				car.trackAhead[0]
-
-				rails.forEach((rail) => {
-					const cp = closestPoint(rail.path, [car.x, car.y]);
+				// TODO: Need to move this to a force
+				// TODO: Need to construct force similar to d3.forceCollide
+				this.rails.forEach((rail) => {
+					const cp = closestPoint(rail.path, car);
 					console.log('Sam, closestPoint:', cp);
-					rail.circle.attr('cx', cp[x]).attr('cy', cp[y]);
-					if (cp.distance <= r) {
-						// Bounce!
+					rail.circle.attr('cx', cp.x).attr('cy', cp.y);
+					// Bounce!
+					if (cp.distance <= radius + strokeWidth / 2) {
 						console.log('Sam, bounce! piece:', car.trackAhead[0]);
 						// Normal, perpendicular to gradient
 						let normal = [
@@ -392,7 +396,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			let buildPosition = [0, 0];
 			const extrema = [[0, 0], [0, 0]];
 			const railPoints = [[], []];
-			rails = new Array(2).fill(0).map(() => ({
+			this.rails = new Array(2).fill(0).map(() => ({
 				circle: d3.select('svg').append('circle').attr('r', '2px').attr('fill', 'green'),
 			}));
 
@@ -494,7 +498,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				});
 				elLine.setAttribute('d', d.join(''));
 				this.gTrack.appendChild(elLine);
-				rails[j].path = elLine;
+				this.rails[j].path = elLine;
 			});
 
 			// Adjust SVG View Box
@@ -522,7 +526,8 @@ Object.defineProperties(RaceTrack.prototype, {
 			d3.select('svg #gCars').selectAll('circle')
 				.data(cars).enter().append('circle').classed('car', true)
 				.attr('fill', d => d.color).attr('stroke', d => d.color2)
-				.attr('r', r).attr('cx', d => d.x).attr('cy', d => d.y);
+				.attr('stroke-width', strokeWidth);
+				.attr('r', radius).attr('cx', d => d.x).attr('cy', d => d.y);
 			this.simulation.nodes(cars);
 			return this;
 		},
@@ -556,47 +561,54 @@ function Car(name, options) {
 Object.defineProperties(Car.prototype, {
 });
 
-let rails = [];
-
 function closestPoint(pathNode, point) {
+	const dist = p => Math.hypot(p.x - point.x, p.y - point.y);
 	const pathLength = pathNode.getTotalLength();
 	let precision = 2;
 	let best;
 	let bestLength;
 	let bestDistance = Number.POSITIVE_INFINITY;
 
-	// linear scan for coarse approximation
-	for (let scan, scanLength = 0, scanDistance; scanLength <= pathLength; scanLength += precision) {
-		if ((scanDistance = distance2(scan = pathNode.getPointAtLength(scanLength))) < bestDistance) {
-			best = scan, bestLength = scanLength, bestDistance = scanDistance;
+	// Linear scan for coarse approximation
+	for (let scanLength = 0; scanLength <= pathLength; scanLength += precision) {
+		const scan = pathNode.getPointAtLength(scanLength);
+		const scanDistance = dist(scan);
+		if (scanDistance < bestDistance) {
+			best = scan;
+			bestLength = scanLength;
+			bestDistance = scanDistance;
 		}
 	}
 
-	// binary search for precise estimate
+	// Binary search for precise estimate
 	precision /= 2;
 	while (precision > 0.5) {
-		let before,
-			after,
-			beforeLength,
-			afterLength,
-			beforeDistance,
-			afterDistance;
-		if ((beforeLength = bestLength - precision) >= 0 && (beforeDistance = distance2(before = pathNode.getPointAtLength(beforeLength))) < bestDistance) {
-			best = before, bestLength = beforeLength, bestDistance = beforeDistance;
-		} else if ((afterLength = bestLength + precision) <= pathLength && (afterDistance = distance2(after = pathNode.getPointAtLength(afterLength))) < bestDistance) {
-			best = after, bestLength = afterLength, bestDistance = afterDistance;
+		const beforeLength = bestLength - precision;
+		const before = pathNode.getPointAtLength(beforeLength);
+		const beforeDistance = dist(before);
+
+		const afterLength = bestLength + precision;
+		const after = pathNode.getPointAtLength(afterLength);
+		const afterDistance = dist(after);
+
+		if (beforeLength >= 0 && beforeDistance < bestDistance) {
+			best = before;
+			bestLength = beforeLength;
+			bestDistance = beforeDistance;
+		} else if (afterLength <= pathLength && afterDistance < bestDistance) {
+			best = after;
+			bestLength = afterLength;
+			bestDistance = afterDistance;
 		} else {
 			precision /= 2;
 		}
 	}
 
-	best = [best.x, best.y];
-	best.distance = Math.sqrt(bestDistance);
-	return best;
+	// TODO: Are we under or over? Left or right?
 
-	function distance2(p) {
-		var dx = p.x - point[x],
-			dy = p.y - point[y];
-		return dx * dx + dy * dy;
-	}
+	return {
+		x: best.x,
+		y: best.y,
+		distance: bestDistance,
+	};
 }
