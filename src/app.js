@@ -3,7 +3,7 @@ const SVG = 'http://www.w3.org/2000/svg';
 const x = 0;
 const y = 1;
 const radius = 4;
-const strokeWidth: 1;
+const strokeWidth = 1;
 
 yodasws.page('home').setRoute({
 	template: 'pages/home.html',
