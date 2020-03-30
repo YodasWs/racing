@@ -212,25 +212,26 @@ function TrackPiece(options) {
 				console.log('Sam, v:', node.vx, node.vy);
 				console.log('Sam, node:', node.x, node.y);
 
-				const nextPosition = [node.x + node.vx, node.y, node.vy];
+				const nextPosition = [node.x + node.vx, node.y + node.vy];
 				console.log('Sam, nextPosition:', nextPosition[x], nextPosition[y]);
+				console.log('Sam, y=,', piece.m, 'x +', piece.b, '(', piece.α * 180 / Math.PI, ')');
 
 				// Determine when the car moves off this piece and onto the next
-				if (typeof piece.m === 'number'
-					&& typeof piece.b === 'number'
-					// If not vertical
-					&& Math.abs(piece.m) < Number.POSITIVE_INFINITY
+				// If not vertical
+				if (Number.isFinite(piece.m) && Number.isFinite(piece.b)
+					&& piece.α !== 0 && piece.α !== Math.PI && piece.α !== 2 * Math.PI
 				) {
 					const y0 = piece.m * nextPosition[x] + piece.b;
-					console.log('Sam, y0,', piece.m, nextPosition[x], piece.b);
-					if (piece.α > 0 && piece.α < Math.PI && y0 < nextPosition[y]) {
+					console.log('Sam, y=', y0, '<>', nextPosition[y]);
+					console.log('Sam, α', piece.α * 180 / Math.PI);
+					if (piece.α > 0 && piece.α < Math.PI && y0 <= nextPosition[y]) {
 						node.nextPiece = true;
 					}
-					if (piece.α > Math.PI && y0 > nextPosition[y]) {
+					if (piece.α > Math.PI && y0 >= nextPosition[y]) {
 						node.nextPiece = true;
 					}
 					if (node.nextPiece) {
-						console.log('Sam, nextPiece,', piece.α * 180 / Math.PI, y0, nextPosition[y], piece.α);
+						console.log('Sam, nextPiece,', piece.α * 180 / Math.PI, y0, nextPosition[y]);
 					}
 				} else {
 					// Vertical, simply check x
@@ -430,7 +431,8 @@ Object.defineProperties(RaceTrack.prototype, {
 				};
 
 				grad.m = (points.y2 - points.y1) / (points.x2 - points.x1);
-				grad.b = grad.m * points.x1 + points.y1;
+				// y - y1 = m (x - x1); y = mx - mx1 + y1
+				grad.b = -grad.m * points.x1 + points.y1;
 
 				// Draw line
 				const elLine = document.createElementNS(SVG, 'line');
@@ -526,7 +528,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			d3.select('svg #gCars').selectAll('circle')
 				.data(cars).enter().append('circle').classed('car', true)
 				.attr('fill', d => d.color).attr('stroke', d => d.color2)
-				.attr('stroke-width', strokeWidth);
+				.attr('stroke-width', strokeWidth)
 				.attr('r', radius).attr('cx', d => d.x).attr('cy', d => d.y);
 			this.simulation.nodes(cars);
 			return this;
