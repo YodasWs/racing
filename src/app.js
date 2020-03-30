@@ -204,8 +204,8 @@ function TrackPiece(options) {
 				// Normalize acceleration and scale by gravity
 				a = Math.hypot(...acceleration);
 				acceleration = acceleration.map(d => d / a);
-				node.vx += gravity * acceleration[x] * alpha;
-				node.vy += gravity * acceleration[y] * alpha;
+				node.vx += gravity * acceleration[x] * alpha / 20;
+				node.vy += gravity * acceleration[y] * alpha / 20;
 
 				console.log('Sam, on piece', piece.j);
 				console.log('Sam, 4 acceleration:', acceleration);
