@@ -2,6 +2,7 @@
 const SVG = 'http://www.w3.org/2000/svg';
 const x = 0;
 const y = 1;
+const r = 4;
 
 yodasws.page('home').setRoute({
 	template: 'pages/home.html',
@@ -12,6 +13,7 @@ yodasws.page('home').setRoute({
 	const alice = new Car('Alice', {
 		color: 'lightgreen',
 		color2: 'orange',
+		r,
 	});
 
 	const OvalCourse = [
@@ -172,7 +174,7 @@ function TrackPiece(options) {
 							// Vector perpendicular to velocity, normalized
 							let p = [];
 							if (node.vy !== 0) {
-								p = [-1, node.vx / node.vy];
+								p = [-node.vy, node.vx];
 								p = p.map(d => d / Math.hypot(...p));
 								console.log('Sam, p:', p);
 							} else if (piece.gradient[y] !== 0) {
@@ -301,7 +303,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			this.simulation.force('fCollide', d3.forceCollide(4));
 
 			// TODO: Place Cars on Starting Line
-			this.simulation.nodes().forEach((car, i) => {
+			this.simulation.nodes().forEach((car) => {
 				car.x = -10;
 				car.y = 0;
 				car.vx = 0;
@@ -342,6 +344,28 @@ Object.defineProperties(RaceTrack.prototype, {
 				car.y
 				car.trackAhead[0]
 
+				rails.forEach((rail) => {
+					const cp = closestPoint(rail.path, [car.x, car.y]);
+					console.log('Sam, closestPoint:', cp);
+					rail.circle.attr('cx', cp[x]).attr('cy', cp[y]);
+					if (cp.distance <= r) {
+						// Bounce!
+						console.log('Sam, bounce! piece:', car.trackAhead[0]);
+						// Normal, perpendicular to gradient
+						let normal = [
+							-car.trackAhead[0].gradient[y],
+							car.trackAhead[0].gradient[x],
+						];
+						normal = normal.map(n => n / Math.hypot(...normal));
+						// Reflection
+						const dot = car.vx * normal[x] + car.vy * normal[y];
+						normal = normal.map(n => 2 * dot * n);
+						car.vx -= normal[x];
+						car.vy -= normal[y];
+						console.log('Sam, bounce! v:', car.vx, car.vy, ...normal);
+					}
+				});
+
 				if (car.nextPiece) {
 					console.log('Sam, change track piece!');
 					car.trackAhead.push(...car.trackAhead.splice(0, 1));
@@ -368,7 +392,10 @@ Object.defineProperties(RaceTrack.prototype, {
 			// Add Track Pieces to SVG
 			let buildPosition = [0, 0];
 			const extrema = [[0, 0], [0, 0]];
-			const rails = [[], []];
+			const railPoints = [[], []];
+			rails = new Array(2).fill(0).map(() => ({
+				circle: d3.select('svg').append('circle').attr('r', '2px').attr('fill', 'green'),
+			}));
 
 			this.gTrack.innerHTML = '';
 			this.gradients.forEach((grad, i) => {
@@ -404,7 +431,7 @@ Object.defineProperties(RaceTrack.prototype, {
 
 				// Draw line
 				const elLine = document.createElementNS(SVG, 'line');
-				rails[0].push({
+				railPoints[0].push({
 					before: [
 						points.x1 - grad.width * Math.cos(α),
 						points.y1 - grad.width * Math.sin(α),
@@ -418,7 +445,7 @@ Object.defineProperties(RaceTrack.prototype, {
 						points.y1 + grad.width * Math.sin(α),
 					],
 				});
-				rails[1].push({
+				railPoints[1].push({
 					before: [
 						points.x2 - grad.width * Math.cos(α) / 4,
 						points.y2 - grad.width * Math.sin(α) / 4,
@@ -451,7 +478,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			this.extrema = extrema;
 
 			// Draw railings along track
-			rails.forEach((rail) => {
+			railPoints.forEach((rail, j) => {
 				rail.push(rail[0]);
 				const elLine = document.createElementNS(SVG, 'path');
 				const d = [];
@@ -468,6 +495,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				});
 				elLine.setAttribute('d', d.join(''));
 				this.gTrack.appendChild(elLine);
+				rails[j].path = elLine;
 			});
 
 			// Adjust SVG View Box
@@ -505,6 +533,7 @@ Object.defineProperties(RaceTrack.prototype, {
 function Car(name, options) {
 	const ele = document.createElementNS(SVG, 'circle');
 	ele.classList.add('car');
+	ele.setAttribute('r', r);
 
 	if (typeof options.color === 'string') {
 		ele.setAttribute('fill', options.color);
@@ -540,3 +569,48 @@ function Car(name, options) {
 }
 Object.defineProperties(Car.prototype, {
 });
+
+let rails = [];
+
+function closestPoint(pathNode, point) {
+	const pathLength = pathNode.getTotalLength();
+	let precision = 2;
+	let best;
+	let bestLength;
+	let bestDistance = Number.POSITIVE_INFINITY;
+
+	// linear scan for coarse approximation
+	for (let scan, scanLength = 0, scanDistance; scanLength <= pathLength; scanLength += precision) {
+		if ((scanDistance = distance2(scan = pathNode.getPointAtLength(scanLength))) < bestDistance) {
+			best = scan, bestLength = scanLength, bestDistance = scanDistance;
+		}
+	}
+
+	// binary search for precise estimate
+	precision /= 2;
+	while (precision > 0.5) {
+		let before,
+			after,
+			beforeLength,
+			afterLength,
+			beforeDistance,
+			afterDistance;
+		if ((beforeLength = bestLength - precision) >= 0 && (beforeDistance = distance2(before = pathNode.getPointAtLength(beforeLength))) < bestDistance) {
+			best = before, bestLength = beforeLength, bestDistance = beforeDistance;
+		} else if ((afterLength = bestLength + precision) <= pathLength && (afterDistance = distance2(after = pathNode.getPointAtLength(afterLength))) < bestDistance) {
+			best = after, bestLength = afterLength, bestDistance = afterDistance;
+		} else {
+			precision /= 2;
+		}
+	}
+
+	best = [best.x, best.y];
+	best.distance = Math.sqrt(bestDistance);
+	return best;
+
+	function distance2(p) {
+		var dx = p.x - point[x],
+			dy = p.y - point[y];
+		return dx * dx + dy * dy;
+	}
+}
