@@ -13,7 +13,6 @@ yodasws.page('home').setRoute({
 	const alice = new Car('Alice', {
 		color: 'lightgreen',
 		color2: 'orange',
-		r,
 	});
 
 	const OvalCourse = [
@@ -523,7 +522,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			d3.select('svg #gCars').selectAll('circle')
 				.data(cars).enter().append('circle').classed('car', true)
 				.attr('fill', d => d.color).attr('stroke', d => d.color2)
-				.attr('cx', d => d.x).attr('cy', d => d.y);
+				.attr('r', r).attr('cx', d => d.x).attr('cy', d => d.y);
 			this.simulation.nodes(cars);
 			return this;
 		},
@@ -531,24 +530,11 @@ Object.defineProperties(RaceTrack.prototype, {
 });
 
 function Car(name, options) {
-	const ele = document.createElementNS(SVG, 'circle');
-	ele.classList.add('car');
-	ele.setAttribute('r', r);
-
-	if (typeof options.color === 'string') {
-		ele.setAttribute('fill', options.color);
-	}
-
-	if (typeof options.color2 === 'string') {
-		ele.setAttribute('stroke-width', '0.5px');
-		ele.setAttribute('stroke', options.color2);
-	}
-
-	this.trackAhead = [];
-
 	let nextPiece = false;
 
-	Object.assign(this, options);
+	Object.assign(this, options, {
+		trackAhead: [],
+	});
 	Object.defineProperties(this, {
 		name: {
 			enumerable: true,
