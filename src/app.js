@@ -353,8 +353,11 @@ Object.defineProperties(RaceTrack.prototype, {
 					console.log('Sam, closestPoint:', cp);
 					rail.circle.attr('cx', cp.x).attr('cy', cp.y);
 					// Bounce!
+					// TODO: Need to do this BEFORE marble overlaps edge
+					// TODO: Make sure we bounce only once in multi-tick collision
 					if (cp.distance <= radius + strokeWidth / 2) {
 						console.log('Sam, bounce! piece:', car.trackAhead[0]);
+						// TODO: Use normal of railing
 						// Normal, perpendicular to gradient
 						let normal = [
 							-car.trackAhead[0].gradient[y],
@@ -564,7 +567,11 @@ Object.defineProperties(Car.prototype, {
 });
 
 function closestPoint(pathNode, point) {
-	const dist = p => Math.hypot(p.x - point.x, p.y - point.y);
+	const nextPoint = [
+		point.x + point.vx,
+		point.y + point.vy,
+	];
+	const dist = p => Math.hypot(p.x - nextPoint[x], p.y - nextPoint[y]);
 	const pathLength = pathNode.getTotalLength();
 	let precision = 2;
 	let best;
@@ -607,6 +614,8 @@ function closestPoint(pathNode, point) {
 	}
 
 	// TODO: Are we under or over? Left or right?
+
+	// TODO: Also calculate and return slope/normal at point
 
 	return {
 		x: best.x,
