@@ -117,7 +117,7 @@ yodasws.page('home').setRoute({
 });
 
 let pieces;
-const gravity = 1;
+const gravity = 1 / 15;
 
 let j = 0;
 
@@ -152,13 +152,8 @@ function TrackPiece(options) {
 				];
 				let a = Math.hypot(...acceleration);
 				acceleration = acceleration.map(d => d / a);
-				console.log('Sam, 1, acceleration:', acceleration);
 
-				// TODO: If pointed away from line, need a strong force toward nearest endpoint
-				// Um, this pushes v to g, which then leaves a oscillating back and forth!
-				// TODO: cos θ = a*v/|a||v|, then adjust to give -π/2 < θ < π/2
-
-				// If acceleration is pointed in the wrong direction, invert it
+				// If acceleration is pointed in the wrong direction, don't use it
 				if (Math.hypot(node.vx, node.vy) !== 0) {
 					let θ = Math.acos((
 						acceleration[x] * node.vx
@@ -167,34 +162,6 @@ function TrackPiece(options) {
 
 					if (θ > Math.PI / 2) {
 						acceleration = [0, 0];
-
-						/*
-						// Negate acceleration
-						acceleration = acceleration.map(d => -d);
-						console.log('Sam, θ:', θ * 180 / Math.PI);
-						console.log('Sam, 2, acceleration:', acceleration);
-
-						if (θ < Math.PI) {
-							// Vector perpendicular to velocity, normalized
-							let p = [];
-							if (node.vy !== 0) {
-								p = [-node.vy, node.vx];
-								p = p.map(d => d / Math.hypot(...p));
-								console.log('Sam, p:', p);
-							} else if (piece.gradient[y] !== 0) {
-								console.log('Sam, v:', node.vx, node.vy);
-								p = [0, Math.sign(piece.gradient[y]) * node.vx];
-								console.log('Sam, p:', p);
-								p = p.map(d => d / Math.hypot(...p));
-								console.log('Sam, p:', p);
-							}
-
-							// Dot product
-							const dp = acceleration[x] * p[x] + acceleration[y] * p[y];
-							acceleration = acceleration.map((d, i) => d - 2 * dp * p[i]);
-							console.log('Sam, 3, acceleration:', acceleration);
-						}
-						/**/
 					}
 				}
 
@@ -204,17 +171,10 @@ function TrackPiece(options) {
 				// Normalize acceleration and scale by gravity
 				a = Math.hypot(...acceleration);
 				acceleration = acceleration.map(d => d / a);
-				node.vx += gravity * acceleration[x] * alpha / 20;
-				node.vy += gravity * acceleration[y] * alpha / 20;
-
-				console.log('Sam, on piece', piece.j);
-				console.log('Sam, 4 acceleration:', acceleration);
-				console.log('Sam, v:', node.vx, node.vy);
-				console.log('Sam, node:', node.x, node.y);
+				node.vx += gravity * acceleration[x] * alpha;
+				node.vy += gravity * acceleration[y] * alpha;
 
 				const nextPosition = [node.x + node.vx, node.y + node.vy];
-				console.log('Sam, nextPosition:', nextPosition[x], nextPosition[y]);
-				console.log('Sam, y=,', piece.m, 'x +', piece.b, '(', piece.α * 180 / Math.PI, ')');
 
 				// Determine when the car moves off this piece and onto the next
 				// If not vertical
@@ -222,16 +182,11 @@ function TrackPiece(options) {
 					&& piece.α !== 0 && piece.α !== Math.PI && piece.α !== 2 * Math.PI
 				) {
 					const y0 = piece.m * nextPosition[x] + piece.b;
-					console.log('Sam, y=', y0, '<>', nextPosition[y]);
-					console.log('Sam, α', piece.α * 180 / Math.PI);
 					if (piece.α > 0 && piece.α < Math.PI && y0 <= nextPosition[y]) {
 						node.nextPiece = true;
 					}
 					if (piece.α > Math.PI && y0 >= nextPosition[y]) {
 						node.nextPiece = true;
-					}
-					if (node.nextPiece) {
-						console.log('Sam, nextPiece,', piece.α * 180 / Math.PI, y0, nextPosition[y]);
 					}
 				} else {
 					// Vertical, simply check x
@@ -242,6 +197,8 @@ function TrackPiece(options) {
 						node.nextPiece = true;
 					}
 				}
+
+				// TODO: Need to determine if marble's moved back a piece!
 			});
 		}
 
@@ -312,7 +269,8 @@ Object.defineProperties(RaceTrack.prototype, {
 			this.simulation.nodes().forEach((car, i) => {
 				car.x = -10 * (i + 1);
 				car.y = -3 * Math.pow(-1, i);
-				car.vx = 0;
+				// TODO: Start with some velocity to increase excitement at the start
+				car.vx = 0.9;
 				car.vy = 0;
 				car.trackAhead = this.gradients.slice();
 				pieces = this.gradients.slice();
@@ -349,35 +307,35 @@ Object.defineProperties(RaceTrack.prototype, {
 				// TODO: Need to move this to a force
 				// TODO: Need to construct force similar to d3.forceCollide
 				this.rails.forEach((rail) => {
-					const cp = closestPoint(rail.path, car);
-					console.log('Sam, closestPoint:', cp);
-					rail.circle.attr('cx', cp.x).attr('cy', cp.y);
+					const cp = closestPoint(rail, car);
 					// Bounce!
-					// TODO: Need to do this BEFORE marble overlaps edge
 					// TODO: Make sure we bounce only once in multi-tick collision
 					if (cp.distance <= radius + strokeWidth / 2) {
-						console.log('Sam, bounce! piece:', car.trackAhead[0]);
-						// TODO: Use normal of railing
-						// Normal, perpendicular to gradient
+						// Vector normal to the surface at this point
 						let normal = [
-							-car.trackAhead[0].gradient[y],
-							car.trackAhead[0].gradient[x],
+							cp.after.y - cp.best.y,
+							cp.best.x - cp.after.x,
 						];
-						normal = normal.map(n => n / Math.hypot(...normal));
-						// Reflection
-						const dot = car.vx * normal[x] + car.vy * normal[y];
-						normal = normal.map(n => 2 * dot * n);
-						car.vx -= normal[x];
-						car.vy -= normal[y];
-						console.log('Sam, bounce! v:', car.vx, car.vy, ...normal);
+						const N = Math.hypot(...normal);
+						normal = normal.map(d => d / N);
+						const dot = normal[x] * car.vx + normal[y] * car.vy;
+						// Not a perfect reflection. Perfect would be 2 * dot, this is between 1-2 * dot
+						const angle = Math.random() * dot + dot;
+						car.vx -= angle * normal[x];
+						car.vy -= angle * normal[y];
+
+						// If running along the rail, try to push off
+						if (Math.hypot(car.x + car.vx - cp.after.x, car.y + car.vy - cp.after.y) <= 
+Math.hypot(car.x + car.vx - cp.best.x, car.y + car.vy - cp.best.y) ||
+						Math.hypot(car.x + car.vx - cp.after.x, car.y + car.vy - cp.after.y) <= radius + strokeWidth / 2) {
+							// car.vx += cp.after.x - car.x - car.vx;
+							// car.vy += cp.after.x - car.y - car.vy;
+						}
 					}
 				});
 
 				if (car.nextPiece) {
-					console.log('Sam, change track piece!');
 					car.trackAhead.push(...car.trackAhead.splice(0, 1));
-					console.log('Sam, now on piece', pieces.indexOf(car.trackAhead[0]));
-					console.log('Sam, trackAhead:', car.trackAhead);
 					car.nextPiece = false;
 				}
 
@@ -400,9 +358,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			let buildPosition = [0, 0];
 			const extrema = [[0, 0], [0, 0]];
 			const railPoints = [[], []];
-			this.rails = new Array(2).fill(0).map(() => ({
-				circle: d3.select('svg').append('circle').attr('r', '2px').attr('fill', 'green'),
-			}));
+			this.rails = new Array(2).fill({});
 
 			this.gTrack.innerHTML = '';
 			this.gradients.forEach((grad, i) => {
@@ -503,7 +459,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				});
 				elLine.setAttribute('d', d.join(''));
 				this.gTrack.appendChild(elLine);
-				this.rails[j].path = elLine;
+				this.rails[j] = elLine;
 			});
 
 			// Adjust SVG View Box
@@ -540,10 +496,9 @@ Object.defineProperties(RaceTrack.prototype, {
 });
 
 function Car(name, options) {
-	let nextPiece = false;
-
 	Object.assign(this, options, {
 		trackAhead: [],
+		nextPiece: false,
 	});
 	Object.defineProperties(this, {
 		name: {
@@ -552,14 +507,6 @@ function Car(name, options) {
 		},
 		ele: {
 			get: () => ele,
-		},
-		nextPiece: {
-			set(val) {
-				if (typeof val === 'boolean') {
-					nextPiece = val;
-				}
-			},
-			get: () => nextPiece,
 		},
 	});
 }
@@ -573,7 +520,7 @@ function closestPoint(pathNode, point) {
 	];
 	const dist = p => Math.hypot(p.x - nextPoint[x], p.y - nextPoint[y]);
 	const pathLength = pathNode.getTotalLength();
-	let precision = 2;
+	let precision = 16;
 	let best;
 	let bestLength;
 	let bestDistance = Number.POSITIVE_INFINITY;
@@ -588,6 +535,16 @@ function closestPoint(pathNode, point) {
 			bestDistance = scanDistance;
 		}
 	}
+	
+	console.log('Sam, rough distance:', bestDistance);
+	// Too far away to bother calculating any closer
+	if (bestDistance >= radius * 2) {
+		return {
+			distance: bestDistance,
+		};
+	}
+
+	let after; // Need this to find the vector normal to the surface
 
 	// Binary search for precise estimate
 	precision /= 2;
@@ -597,7 +554,7 @@ function closestPoint(pathNode, point) {
 		const beforeDistance = dist(before);
 
 		const afterLength = bestLength + precision;
-		const after = pathNode.getPointAtLength(afterLength);
+		after = pathNode.getPointAtLength(afterLength);
 		const afterDistance = dist(after);
 
 		if (beforeLength >= 0 && beforeDistance < bestDistance) {
@@ -615,11 +572,9 @@ function closestPoint(pathNode, point) {
 
 	// TODO: Are we under or over? Left or right?
 
-	// TODO: Also calculate and return slope/normal at point
-
 	return {
-		x: best.x,
-		y: best.y,
 		distance: bestDistance,
+		after,
+		best,
 	};
 }
