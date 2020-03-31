@@ -199,6 +199,34 @@ function TrackPiece(options) {
 				}
 
 				// TODO: Need to determine if marble's moved back a piece!
+				// Determine if the car moved off this piece and onto the previous
+				const lastPiece = node.trackAhead.slice(-1).pop();
+
+				// If not vertical
+				if (Number.isFinite(lastPiece.m) && Number.isFinite(lastPiece.b)
+					&& lastPiece.α !== 0 && lastPiece.α !== Math.PI && lastPiece.α !== 2 * Math.PI
+				) {
+					const y0 = lastPiece.m * node.x + lastPiece.b;
+					if (lastPiece.α > 0 && lastPiece.α < Math.PI && y0 > node.y) {
+						node.previousPiece = true;
+					}
+					if (lastPiece.α > Math.PI && y0 < node.y) {
+						node.previousPiece = true;
+					}
+				} else {
+					// Vertical, simply check x
+					if (lastPiece.α === 0 && lastPiece.x > node.x) {
+						node.previousPiece = true;
+					}
+					if (lastPiece.α === Math.PI && lastPiece.x < node.x) {
+						node.previousPiece = true;
+					}
+				}
+
+				// Can't move forward AND backwards. Let's assume they've moved back and need a course correction
+				if (node.previousPiece) {
+					node.nextPiece = false;
+				}
 			});
 		}
 
@@ -335,8 +363,13 @@ Math.hypot(car.x + car.vx - cp.best.x, car.y + car.vy - cp.best.y) ||
 				});
 
 				if (car.nextPiece) {
-					car.trackAhead.push(...car.trackAhead.splice(0, 1));
+					car.trackAhead.push(car.trackAhead.shift());
 					car.nextPiece = false;
+				}
+
+				if (car.previousPiece) {
+					car.trackAhead.unshift(car.trackAhead.pop());
+					car.previousPiece = false;
 				}
 
 				if (car.x < this.extrema[x][0] - 10
@@ -437,6 +470,8 @@ Math.hypot(car.x + car.vx - cp.best.x, car.y + car.vy - cp.best.y) ||
 					elLine.classList.add('start-line');
 				}
 				this.gTrack.appendChild(elLine);
+
+				// TODO: Calculate borders of piece for geofencing
 			});
 
 			this.extrema = extrema;
@@ -499,6 +534,7 @@ function Car(name, options) {
 	Object.assign(this, options, {
 		trackAhead: [],
 		nextPiece: false,
+		previousPiece: false,
 	});
 	Object.defineProperties(this, {
 		name: {
@@ -535,8 +571,7 @@ function closestPoint(pathNode, point) {
 			bestDistance = scanDistance;
 		}
 	}
-	
-	console.log('Sam, rough distance:', bestDistance);
+
 	// Too far away to bother calculating any closer
 	if (bestDistance >= radius * 2) {
 		return {
