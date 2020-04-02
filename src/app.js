@@ -21,55 +21,65 @@ yodasws.page('home').setRoute({
 			gradient: [1, 0],
 			delta: [20, 0],
 			width: 20,
+			rail: [1, 4],
 		},
 		{
 			gradient: [1, 1],
 			delta: [27, 13],
 			width: 20,
+			rail: [1, 4],
 		},
 		{
 			gradient: [0, 1],
 			delta: [13, 27],
 			width: 20,
+			rail: [1, 4],
 		},
 		{
 			gradient: [-1, 1],
 			delta: [-13, 27],
 			width: 20,
+			rail: [1, 4],
 		},
 		{
 			gradient: [-1, 0],
 			delta: [-27, 13],
 			width: 20,
+			rail: [1, 4],
 		},
 		{
 			gradient: [-1, 0],
 			delta: [-120, 0],
 			width: 20,
+			rail: [1, 4],
 		},
 		{
 			gradient: [-1, -1],
 			delta: [-27, -13],
 			width: 20,
+			rail: [1, 4],
 		},
 		{
 			gradient: [0, -1],
 			delta: [-13, -27],
 			width: 20,
+			rail: [1, 4],
 		},
 		{
 			gradient: [1, -1],
 			delta: [13, -27],
 			width: 20,
+			rail: [1, 4],
 		},
 		{
 			gradient: [1, 0],
 			delta: [27, -13],
 			width: 20,
+			rail: [1, 4],
 		},
-	].map(piece => new TrackPiece(piece));
+	];
 
-	const raceTrack = new RaceTrack(svg, OvalCourse, [
+	const raceTrack = new RaceTrack(svg, OvalCourse.map(piece => new TrackPiece(piece)), [
 		new Car('Alice', {
 			color: 'lightgreen',
 			color2: 'orange',
@@ -81,9 +91,7 @@ yodasws.page('home').setRoute({
 		}),
 		/**/
 	]);
-	console.log('Sam, raceTrack:', raceTrack);
 
-	console.log('Sam, nodes:', raceTrack.simulation.nodes());
 	raceTrack.simulation.stop();
 	raceTrack.init();
 
@@ -116,15 +124,17 @@ yodasws.page('home').setRoute({
 	});
 });
 
-let pieces;
 const gravity = 1 / 15;
 
 let j = 0;
 
 function TrackPiece(options) {
-	this.gradient = options.gradient || [1, 0];
-	this.delta = options.delta || [0, 0];
-	this.width = options.width || 20;
+	Object.assign(this, {
+		gradient: [1, 0],
+		delta: [0, 0],
+		width: 20,
+		rail: [2, 2],
+	}, options);
 
 	const hypot = Math.hypot(...this.gradient)
 	let α = Math.acos(this.gradient[x] / hypot);
@@ -293,15 +303,14 @@ Object.defineProperties(RaceTrack.prototype, {
 			}
 			this.simulation.force('fCollide', d3.forceCollide(4));
 
-			// TODO: Place Cars on Starting Line
+			// Place Cars on Starting Line
 			this.simulation.nodes().forEach((car, i) => {
 				car.x = -10 * (i + 1);
 				car.y = -3 * Math.pow(-1, i);
-				// TODO: Start with some velocity to increase excitement at the start
+				// Start with some velocity to increase excitement at the start
 				car.vx = 0.9;
 				car.vy = 0;
 				car.trackAhead = this.gradients.slice();
-				pieces = this.gradients.slice();
 			});
 			this.moveCars();
 			this.simulation.alphaDecay(0);
@@ -450,30 +459,30 @@ Object.defineProperties(RaceTrack.prototype, {
 				const elLine = document.createElementNS(SVG, 'line');
 				railPoints[0].push({
 					before: [
-						points.x1 - grad.width * Math.cos(α),
-						points.y1 - grad.width * Math.sin(α),
+						points.x1 - grad.width * Math.cos(α) / grad.rail[0],
+						points.y1 - grad.width * Math.sin(α) / grad.rail[0],
 					],
 					is: [
 						points.x1,
 						points.y1,
 					],
 					after: [
-						points.x1 + grad.width * Math.cos(α),
-						points.y1 + grad.width * Math.sin(α),
+						points.x1 + grad.width * Math.cos(α) / grad.rail[0],
+						points.y1 + grad.width * Math.sin(α) / grad.rail[0],
 					],
 				});
 				railPoints[1].push({
 					before: [
-						points.x2 - grad.width * Math.cos(α) / 4,
-						points.y2 - grad.width * Math.sin(α) / 4,
+						points.x2 - grad.width * Math.cos(α) / grad.rail[1],
+						points.y2 - grad.width * Math.sin(α) / grad.rail[1],
 					],
 					is: [
 						points.x2,
 						points.y2,
 					],
 					after: [
-						points.x2 + grad.width * Math.cos(α) / 4,
-						points.y2 + grad.width * Math.sin(α) / 4,
+						points.x2 + grad.width * Math.cos(α) / grad.rail[1],
+						points.y2 + grad.width * Math.sin(α) / grad.rail[1],
 					],
 				});
 
