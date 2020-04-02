@@ -346,19 +346,39 @@ Object.defineProperties(RaceTrack.prototype, {
 						];
 						const N = Math.hypot(...normal);
 						normal = normal.map(d => d / N);
-						const dot = normal[x] * car.vx + normal[y] * car.vy;
-						// Not a perfect reflection. Perfect would be 2 * dot, this is between 1-2 * dot
-						const angle = Math.random() * dot + dot;
-						car.vx -= angle * normal[x];
-						car.vy -= angle * normal[y];
 
-						// If running along the rail, try to push off
-						if (Math.hypot(car.x + car.vx - cp.after.x, car.y + car.vy - cp.after.y) <= 
-Math.hypot(car.x + car.vx - cp.best.x, car.y + car.vy - cp.best.y) ||
-						Math.hypot(car.x + car.vx - cp.after.x, car.y + car.vy - cp.after.y) <= radius + strokeWidth / 2) {
-							// car.vx += cp.after.x - car.x - car.vx;
-							// car.vy += cp.after.x - car.y - car.vy;
+						console.group('Sam,', car.name, 'will bounce');
+						console.log('Sam, hit!', car.vx, car.vy);
+						let i = 0;
+						let angle = 0.9;
+						let delta = [];
+
+						// TODO: If we take n̄ to be along the x'-axis, then we need |d.x'| >= |v.x'|
+						let vxn = (car.vx * normal[x] + car.vy * normal[y]);
+						if (Math.acos(vxn) >= Math.PI / 2) {
+							// Normal is pointed in the wrong direction!
+							normal[x] = -normal[x];
+							normal[y] = -normal[y];
+							vxn = (car.vx * normal[x] + car.vy * normal[y]);
 						}
+
+						do {
+							const dot = normal[x] * car.vx + normal[y] * car.vy;
+							// Not a perfect reflection. Perfect would be 2 * dot, this is between 1-2 * dot
+							angle += 0.1;
+							delta = [
+								angle * dot * normal[x],
+								angle * dot * normal[y],
+							];
+							console.log('Sam,', angle, 'delta:', delta[x], delta[y]);
+
+							// If running along the rail, try to push off
+						} while (Math.abs((car.vx - delta[x]) * normal[x] + (car.vy - delta[y]) * normal[y]) <= Math.abs(vxn));
+						console.log('Sam, bounce!', delta[x], delta[y]);
+						car.vx -= delta[x];
+						car.vy -= delta[y];
+						console.log('Sam, continuing:', car.vx, car.vy);
+						console.groupEnd();
 					}
 				});
 
