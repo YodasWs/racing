@@ -345,6 +345,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				// TODO: Need to construct force similar to d3.forceCollide
 				this.rails.forEach((rail) => {
 					const cp = closestPoint(rail, car);
+
 					// Bounce!
 					// TODO: Make sure we bounce only once in multi-tick collision
 					if (cp.distance <= radius + strokeWidth / 2) {
@@ -356,38 +357,39 @@ Object.defineProperties(RaceTrack.prototype, {
 						const N = Math.hypot(...normal);
 						normal = normal.map(d => d / N);
 
-						console.group('Sam,', car.name, 'will bounce');
-						console.log('Sam, hit!', car.vx, car.vy);
-						let i = 0;
-						let angle = 0.9;
+						let angle = Math.random() + 1;
 						let delta = [];
+						let d = 0;
 
-						// TODO: If we take n̄ to be along the x'-axis, then we need |d.x'| >= |v.x'|
 						let vxn = (car.vx * normal[x] + car.vy * normal[y]);
-						if (Math.acos(vxn) >= Math.PI / 2) {
+						if (Math.acos(vxn / Math.hypot(car.vx, car.vy)) >= Math.PI / 2) {
 							// Normal is pointed in the wrong direction!
 							normal[x] = -normal[x];
 							normal[y] = -normal[y];
 							vxn = (car.vx * normal[x] + car.vy * normal[y]);
 						}
 
+						const dot = normal[x] * car.vx + normal[y] * car.vy;
 						do {
-							const dot = normal[x] * car.vx + normal[y] * car.vy;
-							// Not a perfect reflection. Perfect would be 2 * dot, this is between 1-2 * dot
-							angle += 0.1;
+							angle += 0.05;
 							delta = [
 								angle * dot * normal[x],
 								angle * dot * normal[y],
 							];
-							console.log('Sam,', angle, 'delta:', delta[x], delta[y]);
+
+							d = Math.hypot(
+								car.x + car.vx - delta[x] - cp.after.x,
+								car.y + car.vy - delta[y] - cp.after.y
+							);
 
 							// If running along the rail, try to push off
-						} while (Math.abs((car.vx - delta[x]) * normal[x] + (car.vy - delta[y]) * normal[y]) <= Math.abs(vxn));
-						console.log('Sam, bounce!', delta[x], delta[y]);
+						} while (
+							Math.abs((car.vx - delta[x]) * normal[x] + (car.vy - delta[y]) * normal[y]) <= Math.abs(vxn)
+							&& d < radius + strokeWidth / 2
+							&& angle < 3
+						);
 						car.vx -= delta[x];
 						car.vy -= delta[y];
-						console.log('Sam, continuing:', car.vx, car.vy);
-						console.groupEnd();
 					}
 				});
 
@@ -569,9 +571,6 @@ function Car(name, options) {
 		name: {
 			enumerable: true,
 			get: () => name,
-		},
-		ele: {
-			get: () => ele,
 		},
 	});
 }
