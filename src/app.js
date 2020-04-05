@@ -84,12 +84,18 @@ yodasws.page('home').setRoute({
 			color: 'lightgreen',
 			color2: 'orange',
 		}),
-		/*
 		new Car('Brooklyn', {
 			color: 'white',
 			color2: 'black',
+			r: 3,
+			strokeWidth: 3,
 		}),
-		/**/
+		new Car('Charlotte', {
+			color: '#249E57',
+			color2: 'lightgrey',
+			r: 3.5,
+			strokeWidth: 2,
+		}),
 	]);
 
 	raceTrack.simulation.stop();
@@ -348,7 +354,7 @@ Object.defineProperties(RaceTrack.prototype, {
 
 					// Bounce!
 					// TODO: Make sure we bounce only once in multi-tick collision
-					if (cp.distance <= radius + strokeWidth / 2) {
+					if (cp.distance <= car.radius) {
 						// Vector normal to the surface at this point
 						let normal = [
 							cp.after.y - cp.best.y,
@@ -385,7 +391,7 @@ Object.defineProperties(RaceTrack.prototype, {
 							// If running along the rail, try to push off
 						} while (
 							Math.abs((car.vx - delta[x]) * normal[x] + (car.vy - delta[y]) * normal[y]) <= Math.abs(vxn)
-							&& d < radius + strokeWidth / 2
+							&& d < car.radius
 							&& angle < 3
 						);
 						car.vx -= delta[x];
@@ -553,8 +559,8 @@ Object.defineProperties(RaceTrack.prototype, {
 			d3.select('svg #gCars').selectAll('circle')
 				.data(cars).enter().append('circle').classed('car', true)
 				.attr('fill', d => d.color).attr('stroke', d => d.color2)
-				.attr('stroke-width', strokeWidth)
-				.attr('r', radius).attr('cx', d => d.x).attr('cy', d => d.y);
+				.attr('stroke-width', car => car.strokeWidth)
+				.attr('r', car => car.r).attr('cx', d => d.x).attr('cy', d => d.y);
 			this.simulation.nodes(cars);
 			return this;
 		},
@@ -562,7 +568,10 @@ Object.defineProperties(RaceTrack.prototype, {
 });
 
 function Car(name, options) {
-	Object.assign(this, options, {
+	Object.assign(this, {
+		strokeWidth: 1,
+		r: 4,
+	}, options, {
 		trackAhead: [],
 		nextPiece: false,
 		previousPiece: false,
@@ -571,6 +580,10 @@ function Car(name, options) {
 		name: {
 			enumerable: true,
 			get: () => name,
+		},
+		radius: {
+			enumerable: true,
+			get: () => this.r + this.strokeWidth / 2,
 		},
 	});
 }
@@ -601,7 +614,7 @@ function closestPoint(pathNode, point) {
 	}
 
 	// Too far away to bother calculating any closer
-	if (bestDistance >= radius * 2) {
+	if (bestDistance >= point.radius * 2) {
 		return {
 			distance: bestDistance,
 		};
