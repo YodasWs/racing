@@ -366,17 +366,30 @@ Object.defineProperties(RaceTrack.prototype, {
 						const N = Math.hypot(...normal);
 						normal = normal.map(d => d / N);
 
-						let angle = Math.random() + 1;
-						let delta = [];
-						let d = 0;
+						// Bounce only if car is moving into rail
+						const position = [
+							car.x - cp.best.x,
+							car.y - cp.best.y,
+						];
 
-						let vxn = (car.vx * normal[x] + car.vy * normal[y]);
-						if (Math.acos(vxn / Math.hypot(car.vx, car.vy)) >= Math.PI / 2) {
+						// Point normal in same direction from the railing as the car
+						if (Math.acos((position[x] * normal[x] + position[y] * normal[y]) / Math.hypot(...position)) >= Math.PI / 2) {
 							// Normal is pointed in the wrong direction!
 							normal[x] = -normal[x];
 							normal[y] = -normal[y];
-							vxn = (car.vx * normal[x] + car.vy * normal[y]);
 						}
+
+						// We need to push this far off the railing
+						const vxn = car.vx * normal[x] + car.vy * normal[y];
+
+						if (Math.acos(vxn / Math.hypot(car.vx, car.vy)) < Math.PI / 2) {
+							// We're already moving in the correct direction!
+							return;
+						}
+
+						let angle = Math.random() + 1;
+						let delta = [];
+						let d = 0;
 
 						const dot = normal[x] * car.vx + normal[y] * car.vy;
 						do {
