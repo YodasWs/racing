@@ -451,11 +451,15 @@ Object.defineProperties(RaceTrack.prototype, {
 			const railPoints = [[], []];
 			this.rails = new Array(2).fill({});
 
+			const centerPoints = [];
+
 			this.gTrack.innerHTML = '';
 			this.gradients.forEach((grad, i) => {
 				// Move build position
 				buildPosition[x] += grad.delta[x];
 				buildPosition[y] += grad.delta[y];
+
+				centerPoints.push([buildPosition[x], buildPosition[y]]);
 
 				grad.x = buildPosition[x];
 				grad.y = buildPosition[y];
@@ -573,6 +577,14 @@ Object.defineProperties(RaceTrack.prototype, {
 			}
 
 			this.svg.setAttribute('viewBox', `${x0} ${y0} ${width} ${height}`);
+
+			// Center line around track
+			d3.select('svg').append('g').selectAll('path').data([
+				centerPoints,
+			]).enter().append('path').attr(
+				'd',
+				d3.line().curve(d3.curveBasisClosed)
+			).classed('lane-line', true);
 
 			return this;
 		},

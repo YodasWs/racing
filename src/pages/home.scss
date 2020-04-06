@@ -9,7 +9,7 @@
 
 		&.start-line {
 			stroke-dasharray: 1 1;
-			stroke-dashoffset: 1;
+			stroke-dashoffset: 0.5;
 			stroke: black;
 		}
 	}
@@ -20,5 +20,10 @@
 		stroke: brown;
 		stroke-linejoin: round;
 		stroke-linecap: round;
+
+		&.lane-line {
+			stroke: black;
+			opacity: 0;
+		}
 	}
 }
