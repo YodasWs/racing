@@ -253,8 +253,12 @@ function TrackPiece(options) {
 	})();
 }
 
-function RaceTrack(svg, track, cars) {
+function RaceTrack(svg, track, cars, options) {
 	const simulation = d3.forceSimulation();
+
+	Object.assign(this, {
+		laps: 10,
+	}, options);
 
 	this.gradients = [];
 	this.rails = [];
@@ -336,6 +340,10 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.time = time;
 			});
 			this.moveCars();
+			if (this.simulation.nodes().length === 0) {
+				this.simulation.stop();
+				return;
+			}
 			if (Math.abs(this.simulation.nodes()[0].vx) < 0.005
 				&& Math.abs(this.simulation.nodes()[0].vy) < 0.005) {
 				this.simulation.stop();
@@ -347,7 +355,7 @@ Object.defineProperties(RaceTrack.prototype, {
 		value() {
 			// Move Cars!
 			d3.selectAll('#gCars circle').attr('cx', d => d.x).attr('cy', d => d.y);
-			this.simulation.nodes().forEach((car) => {
+			this.simulation.nodes().forEach((car, i, nodes) => {
 				// TODO: Need to move this to a force
 				// TODO: Need to construct force similar to d3.forceCollide
 				this.rails.forEach((rail) => {
@@ -420,6 +428,14 @@ Object.defineProperties(RaceTrack.prototype, {
 				if (car.nextPiece) {
 					if (this.gradients.indexOf(car.trackAhead[0]) === 0) {
 						car.lapTimes.push(this.time);
+						console.log('Sam,', car.name, car.lapTimes.length, this.time);
+						if (car.lapTimes.length > this.laps) {
+							// Finished!
+							car.x = this.extrema[x][0];
+							car.y = this.extrema[y][0];
+							nodes.splice(i, 1);
+							return;
+						}
 					}
 					car.trackAhead.push(car.trackAhead.shift());
 					car.nextPiece = false;
