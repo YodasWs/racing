@@ -214,8 +214,7 @@ function TrackPiece(options) {
 					}
 				}
 
-				// TODO: Need to determine if marble's moved back a piece!
-				// Determine if the car moved off this piece and onto the previous
+				// Determine if the car moved back a piece
 				const lastPiece = node.trackAhead.slice(-1).pop();
 
 				// If not vertical
@@ -332,7 +331,6 @@ Object.defineProperties(RaceTrack.prototype, {
 	},
 	onTick: {
 		value() {
-			// TODO: Build forces that don't require this expense of power
 			this.simulation.nodes(this.simulation.nodes());
 			requestAnimationFrame((time) => {
 				this.time = time;
@@ -356,7 +354,6 @@ Object.defineProperties(RaceTrack.prototype, {
 					const cp = closestPoint(rail, car);
 
 					// Bounce!
-					// TODO: Make sure we bounce only once in multi-tick collision
 					if (cp.distance <= car.radius) {
 						// Vector normal to the surface at this point
 						let normal = [
@@ -410,6 +407,11 @@ Object.defineProperties(RaceTrack.prototype, {
 							&& d < car.radius
 							&& angle < 3
 						);
+
+						// TODO: if angle < 2, there is a loss of velocity
+						// if n is x'-axis, the x'-value of v doesn't change, but the y' does
+						// How can we compensate for loss of y' with gain in x' to maintain (near-)same velocity?
+
 						car.vx -= delta[x];
 						car.vy -= delta[y];
 					}
@@ -667,8 +669,6 @@ function closestPoint(pathNode, point) {
 			precision /= 2;
 		}
 	}
-
-	// TODO: Are we under or over? Left or right?
 
 	return {
 		distance: bestDistance,
