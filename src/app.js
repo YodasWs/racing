@@ -558,17 +558,18 @@ Object.defineProperties(RaceTrack.prototype, {
 			});
 
 			// Adjust SVG View Box
-			let width = extrema[x][1] - extrema[x][0] + 20;
-			let height = extrema[y][1] - extrema[y][0] + 20;
-			let x0 = extrema[x][0] - 10;
-			let y0 = extrema[y][0] - 10;
+			const buffer = 10;
+			let width = extrema[x][1] - extrema[x][0] + buffer * 2;
+			let height = extrema[y][1] - extrema[y][0] + buffer * 2;
+			let x0 = extrema[x][0] - buffer;
+			let y0 = extrema[y][0] - buffer;
 
 			if (width > height) {
 				height = width * 4 / 5;
 				y0 = (extrema[y][0] + extrema[y][1] - height) / 2;
 			} else {
 				width = height * 5 / 4;
-				x0 = (extrema[x][0] + extrema[x][1] - height) / 2;
+				x0 = (extrema[x][0] + extrema[x][1] - width) / 2;
 			}
 
 			this.svg.setAttribute('viewBox', `${x0} ${y0} ${width} ${height}`);
