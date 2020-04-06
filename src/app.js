@@ -459,9 +459,6 @@ Object.defineProperties(RaceTrack.prototype, {
 
 				grad.x = buildPosition[x];
 				grad.y = buildPosition[y];
-				d3.select('svg #gTrack').append('circle')
-					.attr('cx', grad.x).attr('cy', grad.y)
-					.attr('r', 2).attr('fill', 'red');
 
 				// Add track forces to simulation
 				if (grad.force) {
@@ -528,6 +525,11 @@ Object.defineProperties(RaceTrack.prototype, {
 					elLine.classList.add('start-line');
 				}
 				this.gTrack.appendChild(elLine);
+				d3.select('svg #gTrack').append('circle')
+					.attr('cx', grad.x).attr('cy', grad.y)
+					.attr('r', i === 0 ? 1.5 : 2).attr('fill', grad.color || 'whitesmoke')
+					.attr('strokeWidth', i === 0 ? '0.5px' : '0')
+					.attr('stroke', i === 0 ? 'white' : 'none');
 
 				// TODO: Calculate borders of piece for geofencing
 			});
