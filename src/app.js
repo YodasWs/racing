@@ -259,6 +259,7 @@ function RaceTrack(svg, track, cars) {
 
 	this.gradients = [];
 	this.rails = [];
+	this.time = 0;
 
 	const gTrack = document.createElementNS(SVG, 'g');
 	gTrack.setAttribute('id', 'gTrack');
@@ -333,6 +334,9 @@ Object.defineProperties(RaceTrack.prototype, {
 		value() {
 			// TODO: Build forces that don't require this expense of power
 			this.simulation.nodes(this.simulation.nodes());
+			requestAnimationFrame((time) => {
+				this.time = time;
+			});
 			this.moveCars();
 			if (Math.abs(this.simulation.nodes()[0].vx) < 0.005
 				&& Math.abs(this.simulation.nodes()[0].vy) < 0.005) {
@@ -343,7 +347,6 @@ Object.defineProperties(RaceTrack.prototype, {
 	},
 	moveCars: {
 		value() {
-			// TODO: Discern which piece of track the car is on
 			// Move Cars!
 			d3.selectAll('#gCars circle').attr('cx', d => d.x).attr('cy', d => d.y);
 			this.simulation.nodes().forEach((car) => {
@@ -400,6 +403,9 @@ Object.defineProperties(RaceTrack.prototype, {
 				});
 
 				if (car.nextPiece) {
+					if (this.gradients.indexOf(car.trackAhead[0]) === 0) {
+						car.lapTimes.push(this.time);
+					}
 					car.trackAhead.push(car.trackAhead.shift());
 					car.nextPiece = false;
 				}
@@ -576,6 +582,9 @@ function Car(name, options) {
 		nextPiece: false,
 		previousPiece: false,
 	});
+
+	this.lapTimes = [];
+
 	Object.defineProperties(this, {
 		name: {
 			enumerable: true,
