@@ -315,6 +315,7 @@ Object.defineProperties(RaceTrack.prototype, {
 
 			// Place Cars on Starting Line
 			this.simulation.nodes().forEach((car, i) => {
+				car.lapTimes = [];
 				car.x = -10 * (i + 1);
 				car.y = -3 * Math.pow(-1, i);
 				// Start with some velocity to increase excitement at the start
@@ -349,6 +350,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.simulation.stop();
 				console.log('Sam, stopped!');
 			}
+			return this;
 		},
 	},
 	moveCars: {
@@ -385,6 +387,7 @@ Object.defineProperties(RaceTrack.prototype, {
 						}
 
 						// We need to push this far off the railing
+						// x' component of velocity vector
 						const vxn = car.vx * normal[x] + car.vy * normal[y];
 
 						if (Math.acos(vxn / Math.hypot(car.vx, car.vy)) < Math.PI / 2) {
@@ -392,16 +395,15 @@ Object.defineProperties(RaceTrack.prototype, {
 							return;
 						}
 
-						let angle = Math.random() + 1;
+						let bounceStrength = Math.random() + 1;
 						let delta = [];
 						let d = 0;
 
-						const dot = normal[x] * car.vx + normal[y] * car.vy;
 						do {
-							angle += 0.05;
+							bounceStrength += 0.05;
 							delta = [
-								angle * dot * normal[x],
-								angle * dot * normal[y],
+								bounceStrength * vxn * normal[x],
+								bounceStrength * vxn * normal[y],
 							];
 
 							d = Math.hypot(
@@ -413,12 +415,41 @@ Object.defineProperties(RaceTrack.prototype, {
 						} while (
 							Math.abs((car.vx - delta[x]) * normal[x] + (car.vy - delta[y]) * normal[y]) <= Math.abs(vxn)
 							&& d < car.radius
-							&& angle < 3
+							&& bounceStrength < 3
 						);
 
-						// TODO: if angle < 2, there is a loss of velocity
-						// if n is x'-axis, the x'-value of v doesn't change, but the y' does
-						// How can we compensate for loss of y' with gain in x' to maintain (near-)same velocity?
+						// If bounceStrength < 2, there is a loss of velocity
+						// Compensate for loss of x' with gain in y' to maintain (near-)same velocity
+						if (bounceStrength < 2) {
+							// Get tangent pointing in direction of forward movement
+							const tangent = [
+								-normal[y],
+								normal[x],
+							];
+							if (Math.acos(
+								(car.vx * tangent[x] + car.vy * tangent[y]) / Math.hypot(car.vx, car.vy)
+							) > Math.PI / 2) {
+								tangent[x] *= -1;
+								tangent[y] *= -1;
+							}
+
+							// y' component of velocity vector
+							const vyn = car.vx * tangent[x] + car.vy * tangent[y];
+							bounceStrength = 0.1;
+
+							// Don't want to lose too much speed from bounce
+							while (Math.hypot(car.vx - delta[x], car.vy - delta[y]) < 0.6 * Math.hypot(car.vx, car.vy) && bounceStrength < 1) {
+								bounceStrength += 0.1;
+								delta[x] -= 0.1 * vyn * tangent[x];
+								delta[y] -= 0.1 * vyn * tangent[y];
+							}
+
+							// But don't want to accelerate either
+							while (Math.hypot(car.vx - delta[x], car.vy - delta[y]) > Math.hypot(car.vx, car.vy)) {
+								delta[x] += 0.05 * vyn * tangent[x];
+								delta[y] += 0.05 * vyn * tangent[y];
+							}
+						}
 
 						car.vx -= delta[x];
 						car.vy -= delta[y];
@@ -454,6 +485,7 @@ Object.defineProperties(RaceTrack.prototype, {
 					this.simulation.stop();
 				}
 			});
+			return this;
 		},
 	},
 	setTrack: {
