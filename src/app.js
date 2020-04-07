@@ -448,17 +448,27 @@ Object.defineProperties(RaceTrack.prototype, {
 				});
 
 				if (car.nextPiece) {
-					if (this.gradients.indexOf(car.trackAhead[0]) === 0) {
-						car.lapTimes.push(this.time);
-						console.log('Sam,', car.name, car.lapTimes.length, this.time);
-						if (car.lapTimes.length > this.laps) {
-							// Finished!
-							car.x = this.extrema[x][0];
-							car.y = this.extrema[y][0];
-							nodes.splice(i, 1);
-							return;
+					// Add to time-tracking only on first crossover in the lap
+					const piece = this.gradients.indexOf(car.trackAhead[0]);
+					if (!car.time.some(t => t.lap === car.lapTimes.length && t.piece === piece)) {
+						car.time.push({
+							lap: car.lapTimes.length,
+							piece,
+							time: this.time,
+						});
+
+						if (piece === 0) {
+							car.lapTimes.push(this.time);
+							if (car.lapTimes.length > this.laps) {
+								// Finished!
+								car.x = this.extrema[x][0];
+								car.y = this.extrema[y][0];
+								nodes.splice(i, 1);
+								return;
+							}
 						}
 					}
+
 					car.trackAhead.push(car.trackAhead.shift());
 					car.nextPiece = false;
 				}
@@ -650,9 +660,10 @@ function Car(name, options) {
 		trackAhead: [],
 		nextPiece: false,
 		previousPiece: false,
+		lapTimes: [],
+		time: [],
 	});
 
-	this.lapTimes = [];
 
 	Object.defineProperties(this, {
 		name: {
