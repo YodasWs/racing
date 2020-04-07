@@ -132,8 +132,6 @@ yodasws.page('home').setRoute({
 
 const gravity = 1 / 15;
 
-let j = 0;
-
 function TrackPiece(options) {
 	Object.assign(this, {
 		gradient: [1, 0],
@@ -148,8 +146,6 @@ function TrackPiece(options) {
 		α = 2 * Math.PI - α;
 	}
 	this.α = α;
-
-	this.j = j++;
 
 	this.force = (() => {
 		let nodes = [];
@@ -170,15 +166,10 @@ function TrackPiece(options) {
 				acceleration = acceleration.map(d => d / a);
 
 				// If acceleration is pointed in the wrong direction, don't use it
-				if (Math.hypot(node.vx, node.vy) !== 0) {
-					let θ = Math.acos((
-						acceleration[x] * node.vx
-						+ acceleration[y] * node.vy
-					) / Math.hypot(...acceleration) / Math.hypot(node.vx, node.vy));
-
-					if (θ > Math.PI / 2) {
-						acceleration = [0, 0];
-					}
+				if (Math.hypot(node.vx, node.vy) !== 0 && Math.acos((
+					acceleration[x] * node.vx + acceleration[y] * node.vy
+				) / Math.hypot(...acceleration) / Math.hypot(node.vx, node.vy)) > Math.PI / 2) {
+					acceleration = [0, 0];
 				}
 
 				// Add gradient to acceleration to more strongly force movement in that direction
@@ -258,11 +249,11 @@ function RaceTrack(svg, track, cars, options) {
 
 	Object.assign(this, {
 		laps: 10,
-	}, options);
-
-	this.gradients = [];
-	this.rails = [];
-	this.time = 0;
+	}, options, {
+		gradients: [],
+		rails: [],
+		time: 0,
+	});
 
 	const gTrack = document.createElementNS(SVG, 'g');
 	gTrack.setAttribute('id', 'gTrack');
