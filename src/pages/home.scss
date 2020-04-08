@@ -1,29 +1,38 @@
-[y-page="home"] > svg {
-	display: block;
-	margin: 0 auto;
-	border: 1px inset lightgrey;
-
-	line.checkpoint {
-		stroke-width: 1px;
-		stroke: whitesmoke;
-
-		&.start-line {
-			stroke-dasharray: 1 1;
-			stroke-dashoffset: 0.5;
-			stroke: black;
-		}
+[y-page="home"] {
+	> ul {
+		float: right;
+		margin-top: 0;
+		border: 1px solid black;
+		width: 150px;
 	}
 
-	path {
-		fill: none;
-		stroke-width: 1px;
-		stroke: brown;
-		stroke-linejoin: round;
-		stroke-linecap: round;
+	> svg {
+		display: block;
+		margin: 0 auto;
+		border: 1px inset lightgrey;
 
-		&.lane-line {
-			stroke: black;
-			opacity: 0;
+		line.checkpoint {
+			stroke-width: 1px;
+			stroke: whitesmoke;
+
+			&.start-line {
+				stroke-dasharray: 1 1;
+				stroke-dashoffset: 0.5;
+				stroke: black;
+			}
+		}
+
+		path {
+			fill: none;
+			stroke-width: 1px;
+			stroke: brown;
+			stroke-linejoin: round;
+			stroke-linecap: round;
+
+			&.lane-line {
+				stroke: black;
+				opacity: 0;
+			}
 		}
 	}
 }

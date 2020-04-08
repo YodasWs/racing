@@ -96,7 +96,27 @@ yodasws.page('home').setRoute({
 			r: 3.5,
 			strokeWidth: 2,
 		}),
-	]);
+		new Car('Dallas', {
+			color: 'white',
+			color2: 'blue',
+			r: 3,
+			strokeWidth: 3,
+		}),
+		new Car('Edison', {
+			color: 'lightblue',
+			color2: 'cornflowerblue',
+			r: 3.5,
+			strokeWidth: 2,
+		}),
+		new Car('Florence', {
+			color: '#1E3258',
+			color2: '#BF1F2D',
+			r: 3.5,
+			strokeWidth: 2,
+		}),
+	], {
+		laps: 2,
+	});
 
 	raceTrack.simulation.stop();
 	raceTrack.init();
@@ -130,7 +150,7 @@ yodasws.page('home').setRoute({
 	});
 });
 
-const gravity = 1 / 15;
+const gravity = 1 / 10;
 
 function TrackPiece(options) {
 	Object.assign(this, {
@@ -332,6 +352,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.time = time;
 			});
 			this.moveCars();
+			this.listCars();
 			if (this.simulation.nodes().length === 0) {
 				this.simulation.stop();
 				return;
@@ -647,6 +668,29 @@ Object.defineProperties(RaceTrack.prototype, {
 				.attr('stroke-width', car => car.strokeWidth)
 				.attr('r', car => car.r).attr('cx', d => d.x).attr('cy', d => d.y);
 			this.simulation.nodes(cars);
+			this.cars = cars.slice();
+			return this;
+		},
+	},
+	listCars: {
+		enumerable: true,
+		value() {
+			const ul = document.querySelector('ul#positions');
+			ul.innerHTML = '';
+			this.cars.sort((a, b) => {
+				if (a.time.length === 0 && b.time.length === 0) return 0;
+				if (a.time.length === 0) return 1;
+				if (b.time.length === 0) return -1;
+				if (a.time.length > b.time.length) return -1;
+				if (a.time.length < b.time.length) return 1;
+				if (a.time[a.time.length - 1].time > b.time[b.time.length - 1].time) return 1;
+				if (a.time[a.time.length - 1].time < b.time[b.time.length - 1].time) return -1;
+				return 0;
+			}).forEach((car) => {
+				const li = document.createElement('li');
+				li.innerText = car.name;
+				ul.appendChild(li);
+			});
 			return this;
 		},
 	},
