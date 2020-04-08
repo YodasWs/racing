@@ -273,6 +273,7 @@ function RaceTrack(svg, track, cars, options) {
 		gradients: [],
 		rails: [],
 		time: 0,
+		pos: [],
 	});
 
 	const gTrack = document.createElementNS(SVG, 'g');
@@ -334,7 +335,9 @@ Object.defineProperties(RaceTrack.prototype, {
 				car.vy = 0;
 				car.trackAhead = this.gradients.slice();
 			});
+			this.pos = [];
 			this.moveCars();
+			this.listCars();
 			this.simulation.alphaDecay(0);
 			this.simulation.velocityDecay(0.01);
 
@@ -354,6 +357,9 @@ Object.defineProperties(RaceTrack.prototype, {
 			this.moveCars();
 			this.listCars();
 			if (this.simulation.nodes().length === 0) {
+				console.log('Sam, race over?');
+				console.log('Sam, replay:', this.pos);
+				console.log('Sam, cars:', this.cars);
 				this.simulation.stop();
 				return;
 			}
@@ -506,6 +512,18 @@ Object.defineProperties(RaceTrack.prototype, {
 					console.log('Sam, car out of bounds!');
 					this.simulation.stop();
 				}
+			});
+
+			// Record positional data for future replay
+			this.pos.push({
+				time: this.time,
+				cars: this.cars.map(c => ({
+					name: c.name,
+					vx: c.vx,
+					vy: c.vy,
+					x: c.x,
+					y: c.y,
+				})),
 			});
 			return this;
 		},
