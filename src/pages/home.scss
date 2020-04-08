@@ -1,9 +1,42 @@
 [y-page="home"] {
-	> ul {
+	> ol {
 		float: right;
 		margin-top: 0;
+		padding-left: 0;
 		border: 1px solid black;
-		width: 150px;
+		width: 200px;
+		display: flex;
+		flex-flow: column nowrap;
+
+		> li {
+			display: flex;
+			flex-flow: row nowrap;
+			justify-content: space-between;
+			padding: 2px 0 2px 5px;
+
+			&::before {
+				display: block;
+				content: attr(order);
+			}
+
+			> * {
+				margin: 0 10px;
+			}
+
+			span.name {
+				flex-grow: 1;
+			}
+
+			span.time {
+				opacity: 1;
+				transition: opacity 0;
+
+				&.fade-out {
+					opacity: 0;
+					transition: opacity 500ms ease-in;
+				}
+			}
+		}
 	}
 
 	> svg {

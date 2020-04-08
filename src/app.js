@@ -115,7 +115,7 @@ yodasws.page('home').setRoute({
 			strokeWidth: 2,
 		}),
 	], {
-		laps: 2,
+		laps: 3,
 	});
 
 	raceTrack.simulation.stop();
@@ -690,11 +690,13 @@ Object.defineProperties(RaceTrack.prototype, {
 			return this;
 		},
 	},
+
 	listCars: {
 		enumerable: true,
 		value() {
-			const ul = document.querySelector('ul#positions');
-			ul.innerHTML = '';
+			let leadPosition = [];
+
+			const ol = document.querySelector('ol#positions');
 			this.cars.sort((a, b) => {
 				if (a.time.length === 0 && b.time.length === 0) return 0;
 				if (a.time.length === 0) return 1;
@@ -704,10 +706,52 @@ Object.defineProperties(RaceTrack.prototype, {
 				if (a.time[a.time.length - 1].time > b.time[b.time.length - 1].time) return 1;
 				if (a.time[a.time.length - 1].time < b.time[b.time.length - 1].time) return -1;
 				return 0;
-			}).forEach((car) => {
-				const li = document.createElement('li');
-				li.innerText = car.name;
-				ul.appendChild(li);
+			}).forEach((car, i) => {
+				if (!(car.elPositionList instanceof Element)) {
+					car.elPositionList = document.createElement('li');
+
+					const elName = document.createElement('span');
+					elName.classList.add('name');
+					elName.innerText = car.name;
+					car.elPositionList.appendChild(elName);
+
+					const elTime = document.createElement('span');
+					elTime.classList.add('time');
+					car.elPositionList.appendChild(elTime);
+				}
+				const li = car.elPositionList;
+
+				if (car.time.length > 1) {
+					const lastTime = car.time[car.time.length - 1];
+
+					if (i === 0) {
+						leadPosition = car.time.slice();
+					}
+
+					const elTime = li.querySelector('.time');
+					if (i === 0) {
+						const time = ((lastTime.time - car.time[0].time) / 1000).toFixed(2);
+						if (elTime.innerText !== time) elTime.innerText = time;
+						elTime.classList.remove('fade-out');
+					} else {
+						const leadTime = leadPosition.filter(t => t.lap === lastTime.lap && t.piece === lastTime.piece)[0];
+						if (leadPosition.indexOf(leadTime) !== leadPosition.length - 1) {
+						}
+						let time = (lastTime.time - leadTime.time) / 1000;
+						if (time > 0) time = `+${time.toFixed(2)}`;
+						else time = time.toFixed(2);
+						if (elTime.innerText !== time) {
+							elTime.classList.remove('fade-out');
+							setTimeout(() => {
+								elTime.classList.add('fade-out');
+							}, 1000);
+							elTime.innerText = time;
+						}
+					}
+				}
+				li.style.order = i;
+				li.setAttribute('order', i + 1);
+				if (!ol.contains(li)) ol.appendChild(li);
 			});
 			return this;
 		},
