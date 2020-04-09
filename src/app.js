@@ -85,36 +85,42 @@ yodasws.page('home').setRoute({
 		new Car('Alice', {
 			color: 'lightgreen',
 			color2: 'orange',
+			rgb: [0x90, 0xee, 0x90],
 		}),
 		new Car('Brooklyn', {
 			color: 'white',
 			color2: 'black',
 			r: 3,
 			strokeWidth: 3,
+			rgb: [0, 0, 0],
 		}),
 		new Car('Charlotte', {
 			color: '#249E57',
 			color2: 'lightgrey',
 			r: 3.5,
 			strokeWidth: 2,
+			rgb: [0x24, 0x9E, 0x57],
 		}),
 		new Car('Dallas', {
 			color: 'white',
 			color2: 'blue',
 			r: 3,
 			strokeWidth: 3,
+			rgb: [0, 0, 0xff],
 		}),
 		new Car('Edison', {
 			color: 'lightblue',
 			color2: 'cornflowerblue',
 			r: 3.5,
 			strokeWidth: 2,
+			rgb: [0xAD, 0xD8, 0xE6],
 		}),
 		new Car('Florence', {
 			color: '#1E3258',
 			color2: '#BF1F2D',
 			r: 3.5,
 			strokeWidth: 2,
+			rgb: [0xBF, 0x1F, 0x2D],
 		}),
 	], {
 		laps: 3,
@@ -861,11 +867,13 @@ function closestPoint(pathNode, point) {
 function buildReplay(raceTrack) {
 	console.log('Sam, let\'s do this!');
 	const {
+		Color3,
 		Engine,
 		FreeCamera,
 		HemisphericLight,
 		MeshBuilder,
 		Scene,
+		StandardMaterial,
 		Vector3,
 	} = BABYLON;
 
@@ -873,23 +881,39 @@ function buildReplay(raceTrack) {
 	const engine = new Engine(canvas, true);
 
 	const scene = new Scene(engine);
-	const camera = new FreeCamera('camera', new Vector3(-45, 20, -100), scene);
+	const camera = new FreeCamera('camera', new Vector3(-35, 80, -80), scene);
 	camera.attachControl(canvas, false);
 	const light = new HemisphericLight('light1', new Vector3(0, 1, 0), scene);
 
-	const cars = raceTrack.pos[0].cars;
+	const startPositions = raceTrack.pos[0].cars;
+	const cars = raceTrack.cars;
 	console.log('Sam, cars:', cars);
+	console.log('Sam, startPositions:', startPositions);
 
-	cars.forEach((car) => {
-		const sphere = MeshBuilder.CreateSphere('sphere', { segments: 16, diameter: 2 }, scene);
+	startPositions.forEach((pos) => {
+		const car = cars.filter(c => c.name === pos.name)[0];
+		console.log('Sam, car:', car);
+		console.log('Sam, diameter:', car.radius * 2);
+		const sphere = MeshBuilder.CreateSphere('sphere', {
+			segments: 16,
+			diameter: car.radius * 2,
+		}, scene);
 		if (car.name === 'Charlotte') {
-			camera.setTarget(new Vector3(car.x, 1, -car.y));
+			camera.setTarget(new Vector3(pos.x, car.radius, -pos.y));
 		}
-		sphere.position.x = car.x;
-		sphere.position.y = 1;
-		sphere.position.z = -car.y;
+		sphere.position.x = pos.x;
+		sphere.position.y = car.radius;
+		sphere.position.z = -pos.y;
+
+		const material = new StandardMaterial(`${car.name}Material`, scene);
+		if (car.rgb instanceof Array) {
+			material.diffuseColor = new Color3(...car.rgb.map(c => c / 0xff));
+		} else {
+			material.diffuseColor = new Color3(0, 1, 0);
+		}
+		sphere.material = material;
 	});
-	camera.setTarget(new Vector3(-45, 1, 0));
+	// camera.setTarget(new Vector3(-35, 4.5, 0));
 
 	const buffer = 10;
 	let width = raceTrack.extrema[x][1] - raceTrack.extrema[x][0] + buffer * 2;
