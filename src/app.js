@@ -659,12 +659,14 @@ Object.defineProperties(RaceTrack.prototype, {
 			let x0 = extrema[x][0] - buffer;
 			let y0 = extrema[y][0] - buffer;
 
-			if (width > height) {
-				height = width * 4 / 5;
-				y0 = (extrema[y][0] + extrema[y][1] - height) / 2;
-			} else {
+			if (height > width * 4 / 5) {
+				console.log('height > width * 4 / 5');
 				width = height * 5 / 4;
 				x0 = (extrema[x][0] + extrema[x][1] - width) / 2;
+			} else {
+				console.log('else');
+				height = width * 4 / 5;
+				y0 = (extrema[y][0] + extrema[y][1] - height) / 2;
 			}
 
 			this.svg.setAttribute('viewBox', `${x0} ${y0} ${width} ${height}`);
