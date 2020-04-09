@@ -46,6 +46,7 @@ yodasws.page('home').setRoute({
 			delta: [-27, 13],
 			width: 20,
 			rail: [1, 1/4],
+			color: 'lightgreen',
 		},
 		{
 			gradient: [-1, 0],
@@ -122,6 +123,7 @@ yodasws.page('home').setRoute({
 	raceTrack.simulation.stop();
 	raceTrack.init();
 
+	document.getElementById('btnStart').focus();
 	document.getElementById('btnStart').addEventListener('click', (evt) => {
 		switch (evt.currentTarget.innerText) {
 			case 'Start':
@@ -362,7 +364,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			this.tick++;
 			this.moveCars();
 			this.listCars();
-			if (this.cars.every(c => c.lapTimes.length >= this.laps)) {
+			if (this.cars.every(c => c.lapTimes.length > this.laps)) {
 				console.log('Sam, race over?');
 				console.log('Sam, replay:', this.pos);
 				console.log('Sam, cars:', this.cars);
