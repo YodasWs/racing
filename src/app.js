@@ -369,6 +369,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				console.log('Sam, replay:', this.pos);
 				console.log('Sam, cars:', this.cars);
 				this.simulation.stop();
+				buildReplay(this);
 				return;
 			}
 			return this;
@@ -855,4 +856,50 @@ function closestPoint(pathNode, point) {
 		after,
 		best,
 	};
+}
+
+function buildReplay(raceTrack) {
+	console.log('Sam, let\'s do this!');
+	const {
+		Engine,
+		FreeCamera,
+		HemisphericLight,
+		MeshBuilder,
+		Scene,
+		Vector3,
+	} = BABYLON;
+
+	const canvas = document.querySelector('canvas#replay');
+	const engine = new Engine(canvas, true);
+
+	const scene = new Scene(engine);
+	const camera = new FreeCamera('camera', new Vector3(-45, 20, -100), scene);
+	camera.attachControl(canvas, false);
+	const light = new HemisphericLight('light1', new Vector3(0, 1, 0), scene);
+
+	const cars = raceTrack.pos[0].cars;
+	console.log('Sam, cars:', cars);
+
+	cars.forEach((car) => {
+		const sphere = MeshBuilder.CreateSphere('sphere', { segments: 16, diameter: 2 }, scene);
+		if (car.name === 'Charlotte') {
+			camera.setTarget(new Vector3(car.x, 1, -car.y));
+		}
+		sphere.position.x = car.x;
+		sphere.position.y = 1;
+		sphere.position.z = -car.y;
+	});
+	camera.setTarget(new Vector3(-45, 1, 0));
+
+	const buffer = 10;
+	let width = raceTrack.extrema[x][1] - raceTrack.extrema[x][0] + buffer * 2;
+	let height = raceTrack.extrema[y][1] - raceTrack.extrema[y][0] + buffer * 2;
+    const ground = MeshBuilder.CreateGround('ground1', { height, width, subdivisions: 2 }, scene);
+
+	engine.runRenderLoop(() => {
+		scene.render();
+	});
+	window.addEventListener('resize', () => {
+		engine.resize();
+	});
 }
