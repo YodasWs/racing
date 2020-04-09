@@ -122,18 +122,21 @@ yodasws.page('home').setRoute({
 	raceTrack.simulation.stop();
 	raceTrack.init();
 
-	document.getElementById('btnStart').addEventListener('click', () => {
-		console.log('Sam, start!');
-		raceTrack.simulation.stop();
-		raceTrack.init();
-		raceTrack.simulation.alpha(1);
-		setTimeout(() => {
-			raceTrack.simulation.restart();
-		}, 500);
-	});
-
-	document.getElementById('btnPause').addEventListener('click', (evt) => {
+	document.getElementById('btnStart').addEventListener('click', (evt) => {
 		switch (evt.currentTarget.innerText) {
+			case 'Start':
+				console.log('Sam, start!');
+				raceTrack.simulation.stop();
+				raceTrack.init();
+				raceTrack.simulation.alpha(1);
+				setTimeout((e) => {
+					raceTrack.simulation.restart();
+					e.innerText = 'Pause';
+					e.disabled = false;
+					e.focus();
+				}, 500, evt.currentTarget);
+				evt.currentTarget.disabled = true;
+				break;
 			case 'Pause':
 				raceTrack.simulation.stop();
 				evt.currentTarget.innerText = 'Play';
@@ -359,7 +362,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			this.tick++;
 			this.moveCars();
 			this.listCars();
-			if (this.simulation.nodes().length === 0) {
+			if (this.cars.every(c => c.lapTimes.length >= this.laps)) {
 				console.log('Sam, race over?');
 				console.log('Sam, replay:', this.pos);
 				console.log('Sam, cars:', this.cars);
@@ -380,6 +383,7 @@ Object.defineProperties(RaceTrack.prototype, {
 					const cp = closestPoint(rail, car);
 
 					// Bounce!
+					// TODO: Still need to determine if the car is moving fast enough to jump the railing
 					if (cp.distance <= car.radius) {
 						// Vector normal to the surface at this point
 						let normal = [
