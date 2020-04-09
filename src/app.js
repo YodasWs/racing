@@ -386,7 +386,8 @@ Object.defineProperties(RaceTrack.prototype, {
 
 					// Bounce!
 					// TODO: Still need to determine if the car is moving fast enough to jump the railing
-					if (cp.distance <= car.radius) {
+					// Simple: cp.distance <= Hypot(vx, vy)
+					if (cp.distance <= car.radius || cp.distance <= Math.hypot(car.vx, car.vy)) {
 						// Vector normal to the surface at this point
 						let normal = [
 							cp.after.y - cp.best.y,
