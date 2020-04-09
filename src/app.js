@@ -21,63 +21,64 @@ yodasws.page('home').setRoute({
 			gradient: [1, 0],
 			delta: [20, 0],
 			width: 20,
-			rail: [1, 4],
+			rail: [1, 1/4],
 		},
 		{
 			gradient: [1, 1],
 			delta: [27, 13],
 			width: 20,
-			rail: [1, 4],
+			rail: [1, 1/4],
 		},
 		{
 			gradient: [0, 1],
 			delta: [13, 27],
 			width: 20,
-			rail: [1, 4],
+			rail: [1, 1/4],
 		},
 		{
 			gradient: [-1, 1],
 			delta: [-13, 27],
 			width: 20,
-			rail: [1, 4],
+			rail: [1, 1/4],
 		},
 		{
 			gradient: [-1, 0],
 			delta: [-27, 13],
 			width: 20,
-			rail: [1, 4],
+			rail: [1, 1/4],
 		},
 		{
 			gradient: [-1, 0],
 			delta: [-120, 0],
 			width: 20,
-			rail: [1, 4],
+			rail: [1, 1/4],
 		},
 		{
 			gradient: [-1, -1],
 			delta: [-27, -13],
 			width: 20,
-			rail: [1, 4],
+			rail: [1, 1/4],
 		},
 		{
 			gradient: [0, -1],
 			delta: [-13, -27],
 			width: 20,
-			rail: [1, 4],
+			rail: [1, 1/4],
 		},
 		{
 			gradient: [1, -1],
 			delta: [13, -27],
 			width: 20,
-			rail: [1, 4],
+			rail: [1, 1/4],
 		},
 		{
 			gradient: [1, 0],
 			delta: [27, -13],
 			width: 20,
-			rail: [1, 4],
+			rail: [1, 1/4],
 		},
 	];
+	/**/
 
 	const raceTrack = new RaceTrack(svg, OvalCourse.map(piece => new TrackPiece(piece)), [
 		new Car('Alice', {
@@ -150,14 +151,14 @@ yodasws.page('home').setRoute({
 	});
 });
 
-const gravity = 1 / 10;
+const gravity = 1 / 5;
 
 function TrackPiece(options) {
 	Object.assign(this, {
 		gradient: [1, 0],
 		delta: [0, 0],
 		width: 20,
-		rail: [2, 2],
+		rail: [1/2, 1/2],
 	}, options);
 
 	const hypot = Math.hypot(...this.gradient)
@@ -272,6 +273,7 @@ function RaceTrack(svg, track, cars, options) {
 	}, options, {
 		gradients: [],
 		rails: [],
+		tick: 0,
 		time: 0,
 		pos: [],
 	});
@@ -354,6 +356,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			requestAnimationFrame((time) => {
 				this.time = time;
 			});
+			this.tick++;
 			this.moveCars();
 			this.listCars();
 			if (this.simulation.nodes().length === 0) {
@@ -362,11 +365,6 @@ Object.defineProperties(RaceTrack.prototype, {
 				console.log('Sam, cars:', this.cars);
 				this.simulation.stop();
 				return;
-			}
-			if (Math.abs(this.simulation.nodes()[0].vx) < 0.005
-				&& Math.abs(this.simulation.nodes()[0].vy) < 0.005) {
-				this.simulation.stop();
-				console.log('Sam, stopped!');
 			}
 			return this;
 		},
@@ -481,6 +479,7 @@ Object.defineProperties(RaceTrack.prototype, {
 						car.time.push({
 							lap: car.lapTimes.length,
 							piece,
+							tick: this.tick,
 							time: this.time,
 						});
 
@@ -488,9 +487,8 @@ Object.defineProperties(RaceTrack.prototype, {
 							car.lapTimes.push(this.time);
 							if (car.lapTimes.length > this.laps) {
 								// Finished!
-								car.x = this.extrema[x][0];
-								car.y = this.extrema[y][0];
-								nodes.splice(i, 1);
+								car.fx = this.extrema[x][0];
+								car.fy = this.extrema[y][0];
 								return;
 							}
 						}
@@ -516,6 +514,7 @@ Object.defineProperties(RaceTrack.prototype, {
 
 			// Record positional data for future replay
 			this.pos.push({
+				tick: this.tick,
 				time: this.time,
 				cars: this.cars.map(c => ({
 					name: c.name,
@@ -577,30 +576,30 @@ Object.defineProperties(RaceTrack.prototype, {
 				const elLine = document.createElementNS(SVG, 'line');
 				railPoints[0].push({
 					before: [
-						points.x1 - grad.width * Math.cos(α) / grad.rail[0],
-						points.y1 - grad.width * Math.sin(α) / grad.rail[0],
+						points.x1 - grad.width * Math.cos(α) * grad.rail[0],
+						points.y1 - grad.width * Math.sin(α) * grad.rail[0],
 					],
 					is: [
 						points.x1,
 						points.y1,
 					],
 					after: [
-						points.x1 + grad.width * Math.cos(α) / grad.rail[0],
-						points.y1 + grad.width * Math.sin(α) / grad.rail[0],
+						points.x1 + grad.width * Math.cos(α) * grad.rail[0],
+						points.y1 + grad.width * Math.sin(α) * grad.rail[0],
 					],
 				});
 				railPoints[1].push({
 					before: [
-						points.x2 - grad.width * Math.cos(α) / grad.rail[1],
-						points.y2 - grad.width * Math.sin(α) / grad.rail[1],
+						points.x2 - grad.width * Math.cos(α) * grad.rail[1],
+						points.y2 - grad.width * Math.sin(α) * grad.rail[1],
 					],
 					is: [
 						points.x2,
 						points.y2,
 					],
 					after: [
-						points.x2 + grad.width * Math.cos(α) / grad.rail[1],
-						points.y2 + grad.width * Math.sin(α) / grad.rail[1],
+						points.x2 + grad.width * Math.cos(α) * grad.rail[1],
+						points.y2 + grad.width * Math.sin(α) * grad.rail[1],
 					],
 				});
 
@@ -742,6 +741,7 @@ Object.defineProperties(RaceTrack.prototype, {
 						else time = time.toFixed(2);
 						if (elTime.innerText !== time) {
 							elTime.classList.remove('fade-out');
+							if (car.lapTimes.length < this.laps)
 							setTimeout(() => {
 								elTime.classList.add('fade-out');
 							}, 1000);
