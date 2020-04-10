@@ -69,9 +69,17 @@
 		}
 	}
 
+	> form {
+		display: block;
+		margin: 10px 0;
+		text-align: center;
+	}
+
 	> canvas {
 		display: block;
 		margin: 0 auto;
 		border: 1px inset lightgrey;
+		width: 500px;
+		height: 400px;
 	}
 }
