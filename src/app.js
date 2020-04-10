@@ -2,7 +2,7 @@
 const SVG = 'http://www.w3.org/2000/svg';
 const x = 0;
 const y = 1;
-const radius = 4;
+const radius = 4.5;
 const strokeWidth = 1;
 
 yodasws.page('home').setRoute({
@@ -290,7 +290,7 @@ function RaceTrack(svg, track, cars, options) {
 		rails: [],
 		tick: 0,
 		time: 0,
-		pos: [],
+		finalStanding: [],
 	});
 
 	const gTrack = document.createElementNS(SVG, 'g');
@@ -340,7 +340,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			if (!this.svg.getElementById('gCars')) {
 				this.svg.appendChild(this.gCars);
 			}
-			this.simulation.force('fCollide', d3.forceCollide(4));
+			this.simulation.force('fCollide', d3.forceCollide(radius));
 
 			// Place Cars on Starting Line
 			this.simulation.nodes().forEach((car, i) => {
@@ -351,8 +351,8 @@ Object.defineProperties(RaceTrack.prototype, {
 				car.vx = 0.9;
 				car.vy = 0;
 				car.trackAhead = this.gradients.slice();
+				car.pos = [];
 			});
-			this.pos = [];
 			this.moveCars();
 			this.listCars();
 			this.simulation.alphaDecay(0);
@@ -376,7 +376,6 @@ Object.defineProperties(RaceTrack.prototype, {
 			this.listCars();
 			if (this.cars.every(c => c.lapTimes.length > this.laps)) {
 				console.log('Sam, race over?');
-				console.log('Sam, replay:', this.pos);
 				console.log('Sam, cars:', this.cars);
 				this.simulation.stop();
 				buildReplay(this);
@@ -395,7 +394,9 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.rails.forEach((rail) => {
 					const cp = closestPoint(rail, car);
 
-					// Bounce! If car overlaping railing or car will run through railing
+					// Bounce!
+					// If car overlaping railing or car will run through railing
+					// TODO: Need to construct force similar to d3.forceCollide to prevent bouncing off virtual/invisible railings
 					if (cp.distance <= car.radius || cp.distance <= Math.hypot(car.vx, car.vy)) {
 						// Vector normal to the surface at this point
 						let normal = [
@@ -503,8 +504,11 @@ Object.defineProperties(RaceTrack.prototype, {
 							car.lapTimes.push(this.time);
 							if (car.lapTimes.length > this.laps) {
 								// Finished!
-								car.fx = this.extrema[x][0];
-								car.fy = this.extrema[y][0];
+								if (!this.finalStanding.includes(car.name)) {
+									car.fx = this.gradients[0].x + (this.cars.length - this.finalStanding.length) * 10;
+									car.fy = this.gradients[0].y;
+									this.finalStanding.push(car.name);
+								}
 								return;
 							}
 						}
@@ -529,18 +533,17 @@ Object.defineProperties(RaceTrack.prototype, {
 			});
 
 			// Record positional data for future replay
-			this.pos.push({
-				tick: this.tick,
-				time: this.time,
-				cars: this.cars.map(c => ({
-					name: c.name,
-					radius: c.radius,
-					vx: c.vx,
-					vy: c.vy,
-					x: c.x,
-					y: c.y,
-				})),
+			this.cars.forEach((car) => {
+				car.pos.push({
+					tick: this.tick,
+					time: this.time,
+					vx: car.vx,
+					vy: car.vy,
+					x: car.x,
+					y: car.y,
+				});
 			});
+
 			return this;
 		},
 	},
@@ -785,6 +788,7 @@ function Car(name, options) {
 		previousPiece: false,
 		lapTimes: [],
 		time: [],
+		pos: [],
 	});
 
 
@@ -900,7 +904,7 @@ function buildReplay(raceTrack) {
 	fCamera.maxCameraSpeed = 10;
 	/**/
 
-	const rCamera = new ArcRotateCamera('rotateCamera', Math.PI / 2, Math.PI / 2 - Math.PI / 8, 100, new Vector3(-30, 4.5, 5), scene);
+	const rCamera = new ArcRotateCamera('rotateCamera', -Math.PI / 2, Math.PI / 2 - Math.PI / 8, 100, new Vector3(-30, 4.5, 5), scene);
 
 	console.log('Sam, activeCamera:', scene.activeCamera)
 
@@ -961,10 +965,8 @@ function buildReplay(raceTrack) {
 	});
 
 	// Place cars in starting positions
-	const startPositions = raceTrack.pos[0].cars;
-	const cars = raceTrack.cars;
-	startPositions.forEach((pos) => {
-		const car = cars.filter(c => c.name === pos.name)[0];
+	raceTrack.cars.forEach((car) => {
+		const pos = car.pos[0];
 		car.sphere = MeshBuilder.CreateSphere('sphere', {
 			segments: 16,
 			diameter: car.radius * 2,
@@ -982,30 +984,33 @@ function buildReplay(raceTrack) {
 		}
 	});
 
-	if (raceTrack.pos.length > 1) {
-		const anime = new Animation('anime', 'position', 30, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
-		const keys = [];
-		raceTrack.pos.forEach((pos) => {
-			const car = pos.cars.filter(c => c.name === 'Charlotte')[0];
-			keys.push({
-				frame: pos.tick * 5,
-				value: new Vector3(car.x, car.radius, -car.y),
-			});
-		});
-		anime.setKeys(keys);
+	// Build Replay Animation
+	if (raceTrack.cars[0].pos.length > 1) {
+		console.log('Sam, cars:', raceTrack.cars);
 
-		const car = cars.filter(c => c.name === 'Charlotte')[0];
-		car.sphere.animations = [anime];
-		scene.beginAnimation(car.sphere, 0, keys[keys.length - 1].frame, true);
+		raceTrack.cars.forEach((car) => {
+			const keys = [];
+			const anime = new Animation(`anime${car.name}`, 'position', 30, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
+			car.pos.forEach((frame) => {
+				keys.push({
+					frame: frame.tick * 5,
+					value: new Vector3(frame.x, car.radius, -frame.y),
+				});
+			});
+			anime.setKeys(keys);
+			car.sphere.animations = [anime];
+			scene.beginAnimation(car.sphere, 0, keys[keys.length - 1].frame, true);
+		});
+
 	}
 
 	let j = 0;
 	engine.runRenderLoop(() => {
 		scene.render();
 		j++;
-		if (j % 100 === 50) {
+		if (j % 1000 === 0) {
 			scene.activeCamera = uCamera;
-		} else if (j % 100 === 0) {
+		} else if (j % 1000 === 250) {
 			scene.activeCamera = rCamera;
 		}
 	});
