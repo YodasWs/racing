@@ -128,6 +128,7 @@ yodasws.page('home').setRoute({
 
 	raceTrack.simulation.stop();
 	raceTrack.init();
+	buildReplay(raceTrack);
 
 	document.getElementById('btnStart').focus();
 	document.getElementById('btnStart').addEventListener('click', (evt) => {
@@ -360,7 +361,6 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.onTick();
 			});
 
-			buildReplay(this);
 			return this;
 		},
 	},
@@ -394,9 +394,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.rails.forEach((rail) => {
 					const cp = closestPoint(rail, car);
 
-					// Bounce!
-					// TODO: Still need to determine if the car is moving fast enough to jump the railing
-					// Simple: cp.distance <= Hypot(vx, vy)
+					// Bounce! If car overlaping railing or car will run through railing
 					if (cp.distance <= car.radius || cp.distance <= Math.hypot(car.vx, car.vy)) {
 						// Vector normal to the surface at this point
 						let normal = [
@@ -869,9 +867,12 @@ function closestPoint(pathNode, point) {
 function buildReplay(raceTrack) {
 	console.log('Sam, let\'s do this!');
 	const {
+		ArcFollowCamera,
+		ArcRotateCamera,
 		Animation,
 		Color3,
 		Engine,
+		FollowCamera,
 		HemisphericLight,
 		MeshBuilder,
 		Plane,
@@ -885,9 +886,24 @@ function buildReplay(raceTrack) {
 	const canvas = document.querySelector('canvas#replay');
 	const engine = new Engine(canvas, true);
 	const scene = new Scene(engine);
-	const camera = new UniversalCamera('camera', new Vector3(-35, 160, -2 * raceTrack.extrema[y][1]), scene);
-	camera.attachControl(canvas, false);
 	new HemisphericLight('light1', new Vector3(0, 1, 0), scene);
+
+	const uCamera = new UniversalCamera('universalCamera', new Vector3(-35, 160, -2 * raceTrack.extrema[y][1]), scene);
+
+	/*
+	const fCamera = new FollowCamera('followCamera', new Vector3(-35, 160, -2 * raceTrack.extrema[y][1]), scene);
+	fCamera.radius = 30;
+	fCamera.heightOffset = 5;
+	fCamera.rotationOffset = 0;
+	fCamera.cameraAcceleration = 0.05;
+	fCamera.maxCameraSpeed = 10;
+	/**/
+
+	const rCamera = new ArcRotateCamera('rotateCamera', Math.PI / 2, Math.PI / 2 - Math.PI / 8, 100, new Vector3(-30, 4.5, 5), scene);
+
+	console.log('Sam, activeCamera:', scene.activeCamera)
+
+	// camera.attachControl(canvas, false);
 
 	const buffer = 10;
 	let width = raceTrack.extrema[x][1] - raceTrack.extrema[x][0] + buffer * 2;
@@ -902,7 +918,7 @@ function buildReplay(raceTrack) {
 	const ground = MeshBuilder.CreateGround('ground1', { height, width, subdivisions: 2 }, scene);
 	ground.position = new Vector3(
 		(raceTrack.extrema[x][1] + raceTrack.extrema[x][0]) / 2,
-		0,
+		-0.02,
 		-(raceTrack.extrema[y][1] + raceTrack.extrema[y][0]) / 2
 	);
 	const grass = new StandardMaterial('grass', scene);
@@ -932,7 +948,7 @@ function buildReplay(raceTrack) {
 			piece.delta[y] * piece.gradient[y],
 		];
 
-		plane.position = new Vector3(piece.x - piece.gradient[x] * pieceLength / 2, 1, -piece.y + piece.gradient[y] * piece.width / 2);
+		plane.position = new Vector3(piece.x - piece.gradient[x] * pieceLength / 2, 0, -piece.y + piece.gradient[y] * piece.width / 2);
 
 		let α = Math.acos(piece.gradient[y] / Math.hypot(...piece.gradient));
 		if (Math.sign(piece.gradient[x]) === -1) {
@@ -953,7 +969,8 @@ function buildReplay(raceTrack) {
 			diameter: car.radius * 2,
 		}, scene);
 		if (car.name === 'Charlotte') {
-			camera.setTarget(new Vector3(pos.x, car.radius, -pos.y));
+			uCamera.setTarget(new Vector3(pos.x, car.radius, -pos.y));
+			rCamera.lockedTarget = car.sphere;
 		}
 		car.sphere.position = new Vector3(pos.x, car.radius, -pos.y);
 
@@ -964,31 +981,31 @@ function buildReplay(raceTrack) {
 		}
 	});
 
-	let maxFrame = 2;
 	if (raceTrack.pos.length > 1) {
-		const anime = new Animation('anime', 'position', 30, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_LOOP);
+		const anime = new Animation('anime', 'position', 30, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
 		const keys = [];
 		raceTrack.pos.forEach((pos) => {
-			console.log('Sam, pos:', pos);
 			const car = pos.cars.filter(c => c.name === 'Charlotte')[0];
 			keys.push({
-				frame: pos.tick * 10,
+				frame: pos.tick * 5,
 				value: new Vector3(car.x, car.radius, -car.y),
 			});
 		});
 		anime.setKeys(keys);
 
-		maxFrame = keys[keys.length - 1].frame * 2;
 		const car = cars.filter(c => c.name === 'Charlotte')[0];
 		car.sphere.animations = [anime];
-		scene.beginAnimation(car.sphere, 0, maxFrame, false);
+		scene.beginAnimation(car.sphere, 0, keys[keys.length - 1].frame, true);
 	}
 
 	let j = 0;
 	engine.runRenderLoop(() => {
 		scene.render();
-		if (++j > maxFrame) {
-			engine.stopRenderLoop();
+		j++;
+		if (j % 100 === 50) {
+			scene.activeCamera = uCamera;
+		} else if (j % 100 === 0) {
+			scene.activeCamera = rCamera;
 		}
 	});
 	window.addEventListener('resize', () => {
