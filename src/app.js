@@ -825,7 +825,7 @@ function closestPoint(pathNode, point) {
 	}
 
 	// Too far away to bother calculating any closer
-	if (bestDistance >= point.radius * 2) {
+	if (bestDistance >= point.radius * 2 && bestDistance >= Math.hypot(point.vx, point.vy)) {
 		return {
 			distance: bestDistance,
 		};
