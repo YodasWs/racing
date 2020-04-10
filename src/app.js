@@ -966,13 +966,11 @@ function buildReplay(raceTrack) {
 
 	let maxFrame = 2;
 	if (raceTrack.pos.length > 1) {
-		console.log('Sam, now, animation!');
 		const anime = new Animation('anime', 'position', 30, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_LOOP);
 		const keys = [];
 		raceTrack.pos.forEach((pos) => {
 			console.log('Sam, pos:', pos);
 			const car = pos.cars.filter(c => c.name === 'Charlotte')[0];
-			console.log('Sam, car:', car);
 			keys.push({
 				frame: pos.tick * 10,
 				value: new Vector3(car.x, car.radius, -car.y),
@@ -980,7 +978,7 @@ function buildReplay(raceTrack) {
 		});
 		anime.setKeys(keys);
 
-		maxFrame = keys[keys.length - 1].frame;
+		maxFrame = keys[keys.length - 1].frame * 2;
 		const car = cars.filter(c => c.name === 'Charlotte')[0];
 		car.sphere.animations = [anime];
 		scene.beginAnimation(car.sphere, 0, maxFrame, false);
@@ -988,9 +986,8 @@ function buildReplay(raceTrack) {
 
 	let j = 0;
 	engine.runRenderLoop(() => {
-		console.log('Sam, render loop!');
 		scene.render();
-		if (++j > maxFrame && (raceTrack.pos.length <= 1 || raceTrack.pos.length > 1)) {
+		if (++j > maxFrame) {
 			engine.stopRenderLoop();
 		}
 	});
