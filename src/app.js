@@ -360,6 +360,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.onTick();
 			});
 
+			buildReplay(this);
 			return this;
 		},
 	},
@@ -534,6 +535,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				time: this.time,
 				cars: this.cars.map(c => ({
 					name: c.name,
+					radius: c.radius,
 					vx: c.vx,
 					vy: c.vy,
 					x: c.x,
@@ -867,61 +869,130 @@ function closestPoint(pathNode, point) {
 function buildReplay(raceTrack) {
 	console.log('Sam, let\'s do this!');
 	const {
+		Animation,
 		Color3,
 		Engine,
-		FreeCamera,
 		HemisphericLight,
 		MeshBuilder,
+		Plane,
 		Scene,
 		StandardMaterial,
+		UniversalCamera,
 		Vector3,
 	} = BABYLON;
 
+	// First set the scene
 	const canvas = document.querySelector('canvas#replay');
 	const engine = new Engine(canvas, true);
-
 	const scene = new Scene(engine);
-	const camera = new FreeCamera('camera', new Vector3(-35, 80, -80), scene);
+	const camera = new UniversalCamera('camera', new Vector3(-35, 160, -2 * raceTrack.extrema[y][1]), scene);
 	camera.attachControl(canvas, false);
-	const light = new HemisphericLight('light1', new Vector3(0, 1, 0), scene);
+	new HemisphericLight('light1', new Vector3(0, 1, 0), scene);
 
+	const buffer = 10;
+	let width = raceTrack.extrema[x][1] - raceTrack.extrema[x][0] + buffer * 2;
+	let height = raceTrack.extrema[y][1] - raceTrack.extrema[y][0] + buffer * 2;
+
+	if (height > width * 4 / 5) {
+		width = height * 5 / 4;
+	} else {
+		height = width * 4 / 5;
+	}
+
+	const ground = MeshBuilder.CreateGround('ground1', { height, width, subdivisions: 2 }, scene);
+	ground.position = new Vector3(
+		(raceTrack.extrema[x][1] + raceTrack.extrema[x][0]) / 2,
+		0,
+		-(raceTrack.extrema[y][1] + raceTrack.extrema[y][0]) / 2
+	);
+	const grass = new StandardMaterial('grass', scene);
+	grass.diffuseColor = new Color3(0x56 / 0xff, 0x7d / 0xff, 0x46 / 0xff);
+	ground.material = grass;
+	const asphalt = new StandardMaterial('asphalt', scene);
+	asphalt.diffuseColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff)
+
+	// Build the track
+	console.log('Sam, raceTrack:', raceTrack);
+	raceTrack.gradients.forEach((piece, i) => {
+		if (i === 0) {
+			piece.delta = [
+				raceTrack.gradients.slice(-1)[0].x,
+				raceTrack.gradients.slice(-1)[0].y,
+			];
+		}
+
+		const pieceLength = Math.hypot(...piece.delta);
+		const plane = MeshBuilder.CreatePlane(`piece${i}`, {
+			width: piece.width,
+			height: pieceLength,
+		}, scene);
+		piece.gradient = piece.gradient.map(a => a / Math.hypot(...piece.gradient));
+		const delta = [
+			piece.delta[x] * piece.gradient[x],
+			piece.delta[y] * piece.gradient[y],
+		];
+
+		plane.position = new Vector3(piece.x - piece.gradient[x] * pieceLength / 2, 1, -piece.y + piece.gradient[y] * piece.width / 2);
+
+		let α = Math.acos(piece.gradient[y] / Math.hypot(...piece.gradient));
+		if (Math.sign(piece.gradient[x]) === -1) {
+			α = 2 * Math.PI - α;
+		}
+
+		plane.addRotation(Math.PI / 2, 0, α);
+		plane.material = asphalt;
+	});
+
+	// Place cars in starting positions
 	const startPositions = raceTrack.pos[0].cars;
 	const cars = raceTrack.cars;
-	console.log('Sam, cars:', cars);
-	console.log('Sam, startPositions:', startPositions);
-
 	startPositions.forEach((pos) => {
 		const car = cars.filter(c => c.name === pos.name)[0];
-		console.log('Sam, car:', car);
-		console.log('Sam, diameter:', car.radius * 2);
-		const sphere = MeshBuilder.CreateSphere('sphere', {
+		car.sphere = MeshBuilder.CreateSphere('sphere', {
 			segments: 16,
 			diameter: car.radius * 2,
 		}, scene);
 		if (car.name === 'Charlotte') {
 			camera.setTarget(new Vector3(pos.x, car.radius, -pos.y));
 		}
-		sphere.position.x = pos.x;
-		sphere.position.y = car.radius;
-		sphere.position.z = -pos.y;
+		car.sphere.position = new Vector3(pos.x, car.radius, -pos.y);
 
-		const material = new StandardMaterial(`${car.name}Material`, scene);
 		if (car.rgb instanceof Array) {
+			const material = new StandardMaterial(`${car.name}Material`, scene);
 			material.diffuseColor = new Color3(...car.rgb.map(c => c / 0xff));
-		} else {
-			material.diffuseColor = new Color3(0, 1, 0);
+			car.sphere.material = material;
 		}
-		sphere.material = material;
 	});
-	// camera.setTarget(new Vector3(-35, 4.5, 0));
 
-	const buffer = 10;
-	let width = raceTrack.extrema[x][1] - raceTrack.extrema[x][0] + buffer * 2;
-	let height = raceTrack.extrema[y][1] - raceTrack.extrema[y][0] + buffer * 2;
-    const ground = MeshBuilder.CreateGround('ground1', { height, width, subdivisions: 2 }, scene);
+	let maxFrame = 2;
+	if (raceTrack.pos.length > 1) {
+		console.log('Sam, now, animation!');
+		const anime = new Animation('anime', 'position', 30, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_LOOP);
+		const keys = [];
+		raceTrack.pos.forEach((pos) => {
+			console.log('Sam, pos:', pos);
+			const car = pos.cars.filter(c => c.name === 'Charlotte')[0];
+			console.log('Sam, car:', car);
+			keys.push({
+				frame: pos.tick * 10,
+				value: new Vector3(car.x, car.radius, -car.y),
+			});
+		});
+		anime.setKeys(keys);
 
+		maxFrame = keys[keys.length - 1].frame;
+		const car = cars.filter(c => c.name === 'Charlotte')[0];
+		car.sphere.animations = [anime];
+		scene.beginAnimation(car.sphere, 0, maxFrame, false);
+	}
+
+	let j = 0;
 	engine.runRenderLoop(() => {
+		console.log('Sam, render loop!');
 		scene.render();
+		if (++j > maxFrame && (raceTrack.pos.length <= 1 || raceTrack.pos.length > 1)) {
+			engine.stopRenderLoop();
+		}
 	});
 	window.addEventListener('resize', () => {
 		engine.resize();
