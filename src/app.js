@@ -16,6 +16,7 @@ yodasws.page('home').setRoute({
 			gradient: [1, 0],
 			delta: [0, 0],
 			width: 20,
+			color: 'black',
 		},
 		{
 			gradient: [1, 0],

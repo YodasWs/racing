@@ -41,18 +41,18 @@ a:visited {
 }
 
 @keyframes spinner {
-  0% {
-    transform: rotate(0deg);
-  }
-  2% {
-    transform: rotate(0deg);
-  }
-  98% {
-    transform: rotate(calc(360deg * 5));
-  }
-  100% {
-    transform: rotate(calc(360deg * 5));
-  }
+	0% {
+		transform: rotate(0deg);
+	}
+	2% {
+		transform: rotate(0deg);
+	}
+	98% {
+		transform: rotate(calc(360deg * 5));
+	}
+	100% {
+		transform: rotate(calc(360deg * 5));
+	}
 }
 
 #y-spinner {
