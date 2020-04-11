@@ -716,7 +716,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			let leadPosition = [];
 
 			const ol = document.querySelector('ol#positions');
-			this.cars.sort((a, b) => {
+			this.cars.slice().sort((a, b) => {
 				if (a.time.length === 0 && b.time.length === 0) return 0;
 				if (a.time.length === 0) return 1;
 				if (b.time.length === 0) return -1;
@@ -741,7 +741,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				const li = car.elPositionList;
 
 				if (car.time.length > 1) {
-					const lastTime = car.time[car.time.length - 1];
+					const lastTime = car.time.slice().pop();
 
 					if (i === 0) {
 						leadPosition = car.time.slice();
@@ -754,8 +754,6 @@ Object.defineProperties(RaceTrack.prototype, {
 						elTime.classList.remove('fade-out');
 					} else {
 						const leadTime = leadPosition.filter(t => t.lap === lastTime.lap && t.piece === lastTime.piece)[0];
-						if (leadPosition.indexOf(leadTime) !== leadPosition.length - 1) {
-						}
 						let time = (lastTime.time - leadTime.time) / 1000;
 						if (time > 0) time = `+${time.toFixed(2)}`;
 						else time = time.toFixed(2);
@@ -972,7 +970,8 @@ function buildReplay(raceTrack) {
 			diameter: car.radius * 2,
 		}, scene);
 		if (car.name === 'Charlotte') {
-			uCamera.setTarget(new Vector3(pos.x, car.radius, -pos.y));
+			// uCamera.setTarget(new Vector3(pos.x, car.radius, -pos.y));
+			uCamera.lockedTarget = car.sphere;
 			rCamera.lockedTarget = car.sphere;
 		}
 		car.sphere.position = new Vector3(pos.x, car.radius, -pos.y);
@@ -980,6 +979,7 @@ function buildReplay(raceTrack) {
 		if (car.rgb instanceof Array) {
 			const material = new StandardMaterial(`${car.name}Material`, scene);
 			material.diffuseColor = new Color3(...car.rgb.map(c => c / 0xff));
+			material.diffuseTexture = new BABYLON.Texture('ball.png', scene);
 			car.sphere.material = material;
 		}
 	});
@@ -990,18 +990,19 @@ function buildReplay(raceTrack) {
 
 		raceTrack.cars.forEach((car) => {
 			const keys = [];
-			const anime = new Animation(`anime${car.name}`, 'position', 30, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
+			const anime = new Animation(`anime${car.name}`, 'position', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
 			car.pos.forEach((frame) => {
 				keys.push({
-					frame: frame.tick * 5,
+					frame: frame.tick * 2,
 					value: new Vector3(frame.x, car.radius, -frame.y),
 				});
 			});
 			anime.setKeys(keys);
 			car.sphere.animations = [anime];
-			scene.beginAnimation(car.sphere, 0, keys[keys.length - 1].frame, true);
+			setTimeout(() => {
+				scene.beginAnimation(car.sphere, 0, keys[keys.length - 1].frame, true);
+			}, 1200);
 		});
-
 	}
 
 	let j = 0;
