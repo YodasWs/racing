@@ -341,6 +341,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.svg.appendChild(this.gCars);
 			}
 			this.simulation.force('fCollide', d3.forceCollide(radius));
+			this.simulation.force('fRailing', forceRailingBounce(this.rails));
 
 			// Place Cars on Starting Line
 			this.simulation.nodes().forEach((car, i) => {
@@ -389,106 +390,6 @@ Object.defineProperties(RaceTrack.prototype, {
 			// Move Cars!
 			d3.selectAll('#gCars circle').attr('cx', d => d.x).attr('cy', d => d.y);
 			this.simulation.nodes().forEach((car, i, nodes) => {
-				// TODO: Need to move this to a force
-				// TODO: Need to construct force similar to d3.forceCollide
-				this.rails.forEach((rail) => {
-					const cp = closestPoint(rail, car);
-
-					// Bounce!
-					// If car overlaping railing or car will run through railing
-					// TODO: Need to construct force similar to d3.forceCollide to prevent bouncing off virtual/invisible railings
-					if (cp.distance <= car.radius || cp.distance <= Math.hypot(car.vx, car.vy)) {
-						// Vector normal to the surface at this point
-						let normal = [
-							cp.after.y - cp.best.y,
-							cp.best.x - cp.after.x,
-						];
-						const N = Math.hypot(...normal);
-						normal = normal.map(d => d / N);
-
-						// Bounce only if car is moving into rail
-						const position = [
-							car.x - cp.best.x,
-							car.y - cp.best.y,
-						];
-
-						// Point normal in same direction from the railing as the car
-						if (Math.acos((position[x] * normal[x] + position[y] * normal[y]) / Math.hypot(...position)) >= Math.PI / 2) {
-							// Normal is pointed in the wrong direction!
-							normal[x] = -normal[x];
-							normal[y] = -normal[y];
-						}
-
-						// We need to push this far off the railing
-						// x' component of velocity vector
-						const vxn = car.vx * normal[x] + car.vy * normal[y];
-
-						if (Math.acos(vxn / Math.hypot(car.vx, car.vy)) < Math.PI / 2) {
-							// We're already moving in the correct direction!
-							return;
-						}
-
-						let bounceStrength = Math.random() + 1;
-						let delta = [];
-						let d = 0;
-
-						do {
-							bounceStrength += 0.05;
-							delta = [
-								bounceStrength * vxn * normal[x],
-								bounceStrength * vxn * normal[y],
-							];
-
-							d = Math.hypot(
-								car.x + car.vx - delta[x] - cp.after.x,
-								car.y + car.vy - delta[y] - cp.after.y
-							);
-
-							// If running along the rail, try to push off
-						} while (
-							Math.abs((car.vx - delta[x]) * normal[x] + (car.vy - delta[y]) * normal[y]) <= Math.abs(vxn)
-							&& d < car.radius
-							&& bounceStrength < 3
-						);
-
-						// If bounceStrength < 2, there is a loss of velocity
-						// Compensate for loss of x' with gain in y' to maintain (near-)same velocity
-						if (bounceStrength < 2) {
-							// Get tangent pointing in direction of forward movement
-							const tangent = [
-								-normal[y],
-								normal[x],
-							];
-							if (Math.acos(
-								(car.vx * tangent[x] + car.vy * tangent[y]) / Math.hypot(car.vx, car.vy)
-							) > Math.PI / 2) {
-								tangent[x] *= -1;
-								tangent[y] *= -1;
-							}
-
-							// y' component of velocity vector
-							const vyn = car.vx * tangent[x] + car.vy * tangent[y];
-							bounceStrength = 0.1;
-
-							// Don't want to lose too much speed from bounce
-							while (Math.hypot(car.vx - delta[x], car.vy - delta[y]) < 0.6 * Math.hypot(car.vx, car.vy) && bounceStrength < 1) {
-								bounceStrength += 0.1;
-								delta[x] -= 0.1 * vyn * tangent[x];
-								delta[y] -= 0.1 * vyn * tangent[y];
-							}
-
-							// But don't want to accelerate either
-							while (Math.hypot(car.vx - delta[x], car.vy - delta[y]) > Math.hypot(car.vx, car.vy)) {
-								delta[x] += 0.05 * vyn * tangent[x];
-								delta[y] += 0.05 * vyn * tangent[y];
-							}
-						}
-
-						car.vx -= delta[x];
-						car.vy -= delta[y];
-					}
-				});
-
 				if (car.nextPiece) {
 					// Add to time-tracking only on first crossover in the lap
 					const piece = this.gradients.indexOf(car.trackAhead[0]);
@@ -1018,4 +919,115 @@ function buildReplay(raceTrack) {
 	window.addEventListener('resize', () => {
 		engine.resize();
 	});
+}
+
+function forceRailingBounce(rails) {
+	let nodes = [];
+	function force(alpha) {
+		// TODO: Need to construct force similar to d3.forceCollide
+		rails.forEach((rail) => {
+			nodes.forEach((car) => {
+				const cp = closestPoint(rail, car);
+				// Bounce!
+				// If car overlaping railing or car will run through railing
+				// TODO: Need to construct force similar to d3.forceCollide to prevent bouncing off virtual/invisible railings
+				if (cp.distance <= car.radius || cp.distance <= Math.hypot(car.vx, car.vy)) {
+					// Vector normal to the surface at this point
+					let normal = [
+						cp.after.y - cp.best.y,
+						cp.best.x - cp.after.x,
+					];
+					const N = Math.hypot(...normal);
+					normal = normal.map(d => d / N);
+
+					// Bounce only if car is moving into rail
+					const position = [
+						car.x - cp.best.x,
+						car.y - cp.best.y,
+					];
+
+					// Point normal in same direction from the railing as the car
+					if (Math.acos((position[x] * normal[x] + position[y] * normal[y]) / Math.hypot(...position)) >= Math.PI / 2) {
+						// Normal is pointed in the wrong direction!
+						normal[x] = -normal[x];
+						normal[y] = -normal[y];
+					}
+
+					// We need to push this far off the railing
+					// x' component of velocity vector
+					const vxn = car.vx * normal[x] + car.vy * normal[y];
+
+					if (Math.acos(vxn / Math.hypot(car.vx, car.vy)) < Math.PI / 2) {
+						// We're already moving in the correct direction!
+						return;
+					}
+
+					let bounceStrength = Math.random() + 1;
+					let delta = [];
+					let d = 0;
+
+					do {
+						bounceStrength += 0.05;
+						delta = [
+							bounceStrength * vxn * normal[x],
+							bounceStrength * vxn * normal[y],
+						];
+
+						d = Math.hypot(
+							car.x + car.vx - delta[x] - cp.after.x,
+							car.y + car.vy - delta[y] - cp.after.y
+						);
+
+						// If running along the rail, try to push off
+					} while (
+						Math.abs((car.vx - delta[x]) * normal[x] + (car.vy - delta[y]) * normal[y]) <= Math.abs(vxn)
+						&& d < car.radius
+						&& bounceStrength < 3
+					);
+
+					// If bounceStrength < 2, there is a loss of velocity
+					// Compensate for loss of x' with gain in y' to maintain (near-)same velocity
+					if (bounceStrength < 2) {
+						// Get tangent pointing in direction of forward movement
+						const tangent = [
+							-normal[y],
+							normal[x],
+						];
+						if (Math.acos(
+							(car.vx * tangent[x] + car.vy * tangent[y]) / Math.hypot(car.vx, car.vy)
+						) > Math.PI / 2) {
+							tangent[x] *= -1;
+							tangent[y] *= -1;
+						}
+
+						// y' component of velocity vector
+						const vyn = car.vx * tangent[x] + car.vy * tangent[y];
+						bounceStrength = 0.1;
+
+						// Don't want to lose too much speed from bounce
+						while (Math.hypot(car.vx - delta[x], car.vy - delta[y]) < 0.6 * Math.hypot(car.vx, car.vy) && bounceStrength < 1) {
+							bounceStrength += 0.1;
+							delta[x] -= 0.1 * vyn * tangent[x];
+							delta[y] -= 0.1 * vyn * tangent[y];
+						}
+
+						// But don't want to accelerate either
+						while (Math.hypot(car.vx - delta[x], car.vy - delta[y]) > Math.hypot(car.vx, car.vy)) {
+							delta[x] += 0.05 * vyn * tangent[x];
+							delta[y] += 0.05 * vyn * tangent[y];
+						}
+					}
+
+					car.vx -= delta[x];
+					car.vy -= delta[y];
+				}
+			});
+		});
+	}
+
+	force.initialize = (_) => {
+		nodes = _;
+	};
+
+	return force;
 }
