@@ -178,7 +178,7 @@ function TrackPiece(options) {
 
 	const hypot = Math.hypot(...this.gradient)
 	let α = Math.acos(this.gradient[x] / hypot);
-	if (Math.sign(this.gradient[y]) === -1) {
+	if (this.gradient[y] < 0) {
 		α = 2 * Math.PI - α;
 	}
 	this.α = α;
@@ -377,6 +377,13 @@ Object.defineProperties(RaceTrack.prototype, {
 				console.log('Sam, race over?');
 				console.log('Sam, cars:', this.cars);
 				this.simulation.stop();
+
+				// Remove circular reference for conversion to JSON
+				this.cars.forEach((car) => {
+					delete car.sphere;
+				});
+				console.log('Sam, replay data:', JSON.stringify(this.cars));
+
 				buildReplay(this);
 				return;
 			}
@@ -399,13 +406,14 @@ Object.defineProperties(RaceTrack.prototype, {
 							time: this.time,
 						});
 
+						// Cross the start/end line, next lap
 						if (piece === 0) {
 							car.lapTimes.push(this.time);
 							if (car.lapTimes.length > this.laps) {
 								// Finished!
 								if (!this.finalStanding.includes(car.name)) {
 									car.fx = this.gradients[0].x + (this.cars.length - this.finalStanding.length) * 10;
-									car.fy = this.gradients[0].y;
+									car.fy = this.gradients[0].y + 10;
 									this.finalStanding.push(car.name);
 								}
 								return;
@@ -477,7 +485,7 @@ Object.defineProperties(RaceTrack.prototype, {
 
 				// Rotate to gradient
 				let α = Math.acos(grad.gradient[x] / Math.hypot(...grad.gradient));
-				if (Math.sign(grad.gradient[y]) === -1) {
+				if (grad.gradient[y] < 0) {
 					α = 2 * Math.PI - α;
 				}
 				const points = {
@@ -853,7 +861,7 @@ function buildReplay(raceTrack) {
 		plane.position = new Vector3(piece.x - piece.gradient[x] * pieceLength / 2, 0, -piece.y + piece.gradient[y] * piece.width / 2);
 
 		let α = Math.acos(piece.gradient[y] / Math.hypot(...piece.gradient));
-		if (Math.sign(piece.gradient[x]) === -1) {
+		if (piece.gradient[x] > 0) {
 			α = 2 * Math.PI - α;
 		}
 
