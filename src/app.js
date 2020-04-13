@@ -338,7 +338,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			if (!this.svg.getElementById('gCars')) {
 				this.svg.appendChild(this.gCars);
 			}
-			this.simulation.force('fCollide', d3.forceCollide(radius));
+			this.simulation.force('fCollide', d3.forceCollide(car => car.radius));
 			this.simulation.force('fRailing', forceRailingBounce(this.rails));
 
 			// Place Cars on Starting Line
