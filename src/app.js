@@ -198,8 +198,6 @@ function TrackPiece(options) {
 					piece.gradient[x] - node.vx,
 					piece.gradient[y] - node.vy,
 				];
-				let a = Math.hypot(...acceleration);
-				acceleration = acceleration.map(d => d / a);
 
 				// If acceleration is pointed in the wrong direction, don't use it
 				if (Math.hypot(node.vx, node.vy) !== 0 && Math.acos((
@@ -212,7 +210,7 @@ function TrackPiece(options) {
 				acceleration = acceleration.map((d, i) => d + piece.gradient[i]);
 
 				// Normalize acceleration and scale by gravity
-				a = Math.hypot(...acceleration);
+				const a = Math.hypot(...acceleration);
 				acceleration = acceleration.map(d => d / a);
 				node.vx += gravity * acceleration[x] * alpha;
 				node.vy += gravity * acceleration[y] * alpha;
