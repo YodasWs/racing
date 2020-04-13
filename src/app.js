@@ -796,12 +796,13 @@ function buildReplay(raceTrack) {
 	const canvas = document.querySelector('canvas#replay');
 	const engine = new Engine(canvas, true);
 	const scene = new Scene(engine);
+	scene.useRightHandedSystem = true;
 	new HemisphericLight('light1', new Vector3(0, 1, 0), scene);
 
-	const uCamera = new UniversalCamera('universalCamera', new Vector3(-35, 160, -2 * raceTrack.extrema[y][1]), scene);
+	const uCamera = new UniversalCamera('universalCamera', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene);
 
 	/*
-	const fCamera = new FollowCamera('followCamera', new Vector3(-35, 160, -2 * raceTrack.extrema[y][1]), scene);
+	const fCamera = new FollowCamera('followCamera', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene);
 	fCamera.radius = 30;
 	fCamera.heightOffset = 5;
 	fCamera.rotationOffset = 0;
@@ -809,7 +810,7 @@ function buildReplay(raceTrack) {
 	fCamera.maxCameraSpeed = 10;
 	/**/
 
-	const rCamera = new ArcRotateCamera('rotateCamera', -Math.PI / 2, Math.PI / 2 - Math.PI / 8, 100, new Vector3(-30, 4.5, 5), scene);
+	const rCamera = new ArcRotateCamera('rotateCamera', -Math.PI / 2, Math.PI / 2 - Math.PI / 8, 100, new Vector3(-30, 4.5, -5), scene);
 
 	console.log('Sam, activeCamera:', scene.activeCamera)
 
@@ -829,7 +830,7 @@ function buildReplay(raceTrack) {
 	ground.position = new Vector3(
 		(raceTrack.extrema[x][1] + raceTrack.extrema[x][0]) / 2,
 		-0.02,
-		-(raceTrack.extrema[y][1] + raceTrack.extrema[y][0]) / 2
+		(raceTrack.extrema[y][1] + raceTrack.extrema[y][0]) / 2
 	);
 	const grass = new StandardMaterial('grass', scene);
 	grass.diffuseColor = new Color3(0x56 / 0xff, 0x7d / 0xff, 0x46 / 0xff);
@@ -858,7 +859,7 @@ function buildReplay(raceTrack) {
 			piece.delta[y] * piece.gradient[y],
 		];
 
-		plane.position = new Vector3(piece.x - piece.gradient[x] * pieceLength / 2, 0, -piece.y + piece.gradient[y] * piece.width / 2);
+		plane.position = new Vector3(piece.x - piece.gradient[x] * pieceLength / 2, 0, piece.y - piece.gradient[y] * piece.width / 2);
 
 		let α = Math.acos(piece.gradient[y] / Math.hypot(...piece.gradient));
 		if (piece.gradient[x] > 0) {
@@ -869,19 +870,21 @@ function buildReplay(raceTrack) {
 		plane.material = asphalt;
 	});
 
+	const cars = raceTrack.cars.slice();
+
 	// Place cars in starting positions
-	raceTrack.cars.forEach((car) => {
+	cars.forEach((car) => {
 		const pos = car.pos[0];
 		car.sphere = MeshBuilder.CreateSphere('sphere', {
 			segments: 16,
 			diameter: car.radius * 2,
 		}, scene);
 		if (car.name === 'Charlotte') {
-			// uCamera.setTarget(new Vector3(pos.x, car.radius, -pos.y));
+			// uCamera.setTarget(new Vector3(pos.x, car.radius, pos.y));
 			uCamera.lockedTarget = car.sphere;
 			rCamera.lockedTarget = car.sphere;
 		}
-		car.sphere.position = new Vector3(pos.x, car.radius, -pos.y);
+		car.sphere.position = new Vector3(pos.x, car.radius, pos.y);
 
 		if (car.rgb instanceof Array) {
 			const material = new StandardMaterial(`${car.name}Material`, scene);
@@ -892,16 +895,16 @@ function buildReplay(raceTrack) {
 	});
 
 	// Build Replay Animation
-	if (raceTrack.cars[0].pos.length > 1) {
-		console.log('Sam, cars:', raceTrack.cars);
+	if (cars[0].pos.length > 1) {
+		console.log('Sam, cars:', cars);
 
-		raceTrack.cars.forEach((car) => {
+		cars.forEach((car) => {
 			const keys = [];
 			const anime = new Animation(`anime${car.name}`, 'position', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
 			car.pos.forEach((frame) => {
 				keys.push({
 					frame: frame.tick * 2,
-					value: new Vector3(frame.x, car.radius, -frame.y),
+					value: new Vector3(frame.x, car.radius, frame.y),
 				});
 			});
 			anime.setKeys(keys);
