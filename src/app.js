@@ -652,14 +652,14 @@ Object.defineProperties(RaceTrack.prototype, {
 						if (elTime.innerText !== time) elTime.innerText = time;
 						elTime.classList.remove('fade-out');
 					} else {
-						const leadTime = leadPosition.filter(t => t.lap === lastTime.lap && t.piece === lastTime.piece)[0];
+						const leadTime = leadPosition.filter(t => t.lap === lastTime.lap && t.piece === lastTime.piece)
+							.sort((a, b) => a.time - b.time)[0];
 						let time = (lastTime.time - leadTime.time) / 1000;
 						if (time > 0) time = `+${time.toFixed(2)}`;
 						else time = time.toFixed(2);
 						if (elTime.innerText !== time) {
 							elTime.classList.remove('fade-out');
-							if (car.lapTimes.length < this.laps)
-							setTimeout(() => {
+							if (car.lapTimes.length < this.laps) setTimeout(() => {
 								elTime.classList.add('fade-out');
 							}, 1000);
 							elTime.innerText = time;
