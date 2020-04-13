@@ -933,14 +933,13 @@ function buildReplay(raceTrack) {
 function forceRailingBounce(rails) {
 	let nodes = [];
 	function force(alpha) {
-		// TODO: Need to construct force similar to d3.forceCollide
 		rails.forEach((rail) => {
 			nodes.forEach((car) => {
 				const cp = closestPoint(rail, car);
 				// Bounce!
 				// If car overlaping railing or car will run through railing
 				// TODO: Need to construct force similar to d3.forceCollide to prevent bouncing off virtual/invisible railings
-				if (cp.distance <= car.radius || cp.distance <= Math.hypot(car.vx, car.vy)) {
+				if (cp.distance <= car.radius || cp.distance <= Math.hypot(car.vx / 2, car.vy / 2)) {
 					// Vector normal to the surface at this point
 					let normal = [
 						cp.after.y - cp.best.y,
@@ -1027,6 +1026,7 @@ function forceRailingBounce(rails) {
 						}
 					}
 
+					// Finally, apply change in velocity
 					car.vx -= delta[x];
 					car.vy -= delta[y];
 				}
