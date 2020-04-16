@@ -382,7 +382,12 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.cars.forEach((car) => {
 					delete car.sphere;
 				});
-				console.log('Sam, replay data:', JSON.stringify(this.cars));
+				const link = document.createElement('a');
+				link.setAttribute('href', `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(this.cars))}`);
+				const now = new Date();
+				link.setAttribute('download', `race-${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}.json`);
+				link.innerText = 'Save race data';
+				document.querySelector('form').appendChild(link);
 
 				buildReplay(this);
 				return;
