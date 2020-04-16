@@ -785,7 +785,7 @@ function buildReplay(raceTrack) {
 		FollowCamera,
 		HemisphericLight,
 		MeshBuilder,
-		Plane,
+		PolygonMeshBuilder,
 		Scene,
 		StandardMaterial,
 		UniversalCamera,
@@ -839,36 +839,20 @@ function buildReplay(raceTrack) {
 	asphalt.diffuseColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff)
 
 	// Build the track
-	console.log('Sam, raceTrack:', raceTrack);
-	raceTrack.gradients.forEach((piece, i) => {
-		if (i === 0) {
-			piece.delta = [
-				raceTrack.gradients.slice(-1)[0].x,
-				raceTrack.gradients.slice(-1)[0].y,
-			];
+	const precision = 50;
+	const pathArray = [[], []];
+	raceTrack.rails.forEach((rail, i) => {
+		const pathLength = rail.getTotalLength();
+		for (let j = 0; j < 100; j += 100 / precision) {
+			const point = rail.getPointAtLength(pathLength * j / 100);
+			pathArray[i].push(new Vector3(point.x, 0, point.y));
 		}
-
-		const pieceLength = Math.hypot(...piece.delta);
-		const plane = MeshBuilder.CreatePlane(`piece${i}`, {
-			width: piece.width,
-			height: pieceLength,
-		}, scene);
-		piece.gradient = piece.gradient.map(a => a / Math.hypot(...piece.gradient));
-		const delta = [
-			piece.delta[x] * piece.gradient[x],
-			piece.delta[y] * piece.gradient[y],
-		];
-
-		plane.position = new Vector3(piece.x - piece.gradient[x] * pieceLength / 2, 0, piece.y - piece.gradient[y] * piece.width / 2);
-
-		let α = Math.acos(piece.gradient[y] / Math.hypot(...piece.gradient));
-		if (piece.gradient[x] > 0) {
-			α = 2 * Math.PI - α;
-		}
-
-		plane.addRotation(Math.PI / 2, 0, α);
-		plane.material = asphalt;
 	});
+	const track = MeshBuilder.CreateRibbon('track', {
+		pathArray: pathArray.reverse(),
+		closePath: true,
+	}, scene);
+	track.material = asphalt;
 
 	const cars = raceTrack.cars.slice();
 
