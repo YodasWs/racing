@@ -806,20 +806,18 @@ function buildReplay(raceTrack) {
 
 	const uCamera = new UniversalCamera('universalCamera', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene);
 
-	/*
 	const fCamera = new FollowCamera('followCamera', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene);
-	fCamera.radius = 30;
-	fCamera.heightOffset = 5;
+	fCamera.radius = 90;
+	fCamera.heightOffset = 80;
 	fCamera.rotationOffset = 0;
 	fCamera.cameraAcceleration = 0.05;
 	fCamera.maxCameraSpeed = 10;
-	/**/
 
-	const rCamera = new ArcRotateCamera('rotateCamera', -Math.PI / 2, Math.PI / 2 - Math.PI / 8, 100, new Vector3(-30, 4.5, -5), scene);
+	const rCamera = new ArcRotateCamera('rotateCamera', -Math.PI / 2, Math.PI / 2 - Math.PI / 8, 100, new Vector3(0, 0, 0), scene);
 
 	console.log('Sam, activeCamera:', scene.activeCamera)
 
-	// camera.attachControl(canvas, false);
+	// uCamera.attachControl(canvas, false);
 
 	const buffer = 10;
 	let width = raceTrack.extrema[x][1] - raceTrack.extrema[x][0] + buffer * 2;
@@ -844,7 +842,7 @@ function buildReplay(raceTrack) {
 	asphalt.diffuseColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff)
 
 	// Build the track
-	const precision = 50;
+	const precision = 100;
 	const pathArray = [[], []];
 	raceTrack.rails.forEach((rail, i) => {
 		const pathLength = rail.getTotalLength();
@@ -870,6 +868,7 @@ function buildReplay(raceTrack) {
 		}, scene);
 		if (car.name === 'Charlotte') {
 			// uCamera.setTarget(new Vector3(pos.x, car.radius, pos.y));
+			fCamera.lockedTarget = car.sphere;
 			uCamera.lockedTarget = car.sphere;
 			rCamera.lockedTarget = car.sphere;
 		}
@@ -904,13 +903,18 @@ function buildReplay(raceTrack) {
 		});
 	}
 
+	scene.activeCamera = uCamera;
+
 	let j = 0;
+	let k = 0;
 	engine.runRenderLoop(() => {
 		scene.render();
 		j++;
-		if (j % 1000 === 0) {
+		if (j % 500 === 1) {
+			uCamera.lockedTarget = cars[k % cars.length].sphere;
 			scene.activeCamera = uCamera;
-		} else if (j % 1000 === 250) {
+		} else if (j % 500 === 251) {
+			rCamera.lockedTarget = cars[k++ % cars.length].sphere;
 			scene.activeCamera = rCamera;
 		}
 	});
