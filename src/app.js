@@ -886,19 +886,35 @@ function buildReplay(raceTrack) {
 	if (cars[0].pos.length > 1) {
 		console.log('Sam, cars:', cars);
 
-		cars.forEach((car) => {
-			const keys = [];
-			const anime = new Animation(`anime${car.name}`, 'position', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
+		cars.forEach((car, i) => {
+			let xr = 0;
+			let yr = 0;
+
+			const poKeys = [];
+			const roKeys = [];
+			const moveAnime = new Animation(`anime${car.name}`, 'position', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
+			const spinAnime = new Animation(`anime${car.name}`, 'rotation', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
 			car.pos.forEach((frame) => {
-				keys.push({
-					frame: frame.tick * 2,
+				if (frame.vx !== 0) {
+					xr -= Math.sign(frame.vx) * Math.PI / 8;
+				}
+				if (frame.vy !== 0) {
+					yr += Math.sign(frame.vy) * Math.PI / 8;
+				}
+				poKeys.push({
+					frame: frame.tick * 3,
 					value: new Vector3(frame.x, car.radius, frame.y),
 				});
+				roKeys.push({
+					frame: frame.tick * 3,
+					value: new Vector3(yr, 0, xr),
+				});
 			});
-			anime.setKeys(keys);
-			car.sphere.animations = [anime];
+			moveAnime.setKeys(poKeys);
+			spinAnime.setKeys(roKeys);
+			car.sphere.animations = [moveAnime, spinAnime];
 			setTimeout(() => {
-				scene.beginAnimation(car.sphere, 0, keys[keys.length - 1].frame, true);
+				scene.beginAnimation(car.sphere, 0, poKeys[poKeys.length - 1].frame, true);
 			}, 1200);
 		});
 	}
