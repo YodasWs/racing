@@ -344,8 +344,8 @@ Object.defineProperties(RaceTrack.prototype, {
 			// Place Cars on Starting Line
 			this.simulation.nodes().forEach((car, i) => {
 				car.lapTimes = [];
-				car.x = -10 * (i + 1);
-				car.y = -3 * Math.pow(-1, i);
+				car.x = -7 * (i + 1);
+				car.y = 5 * Math.pow(-1, i);
 				// Start with some velocity to increase excitement at the start
 				car.vx = 0.9;
 				car.vy = 0;
