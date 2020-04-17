@@ -895,12 +895,8 @@ function buildReplay(raceTrack) {
 			const moveAnime = new Animation(`anime${car.name}`, 'position', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
 			const spinAnime = new Animation(`anime${car.name}`, 'rotation', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
 			car.pos.forEach((frame) => {
-				if (frame.vx !== 0) {
-					xr -= Math.sign(frame.vx) * Math.PI / 8;
-				}
-				if (frame.vy !== 0) {
-					yr += Math.sign(frame.vy) * Math.PI / 8;
-				}
+				xr -= frame.vx * Math.PI / 16;
+				yr += frame.vy * Math.PI / 16;
 				poKeys.push({
 					frame: frame.tick * 3,
 					value: new Vector3(frame.x, car.radius, frame.y),
