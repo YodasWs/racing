@@ -183,7 +183,7 @@ yodasws.page('home').setRoute({
 	});
 });
 
-const gravity = 1 / 5;
+const gravity = 1 / 10;
 
 function TrackPiece(options) {
 	Object.assign(this, {
@@ -448,9 +448,12 @@ Object.defineProperties(RaceTrack.prototype, {
 							if (car.lapTimes.length > this.laps) {
 								// Finished!
 								if (!this.finalStanding.includes(car.name)) {
-									car.fx = this.gradients[0].x + (this.cars.length - this.finalStanding.length) * 10;
-									car.fy = this.gradients[0].y + 10;
 									this.finalStanding.push(car.name);
+								}
+								const place = this.finalStanding.indexOf(car.name);
+								if (car.x > this.gradients[0].x + (this.cars.length - place) * 10) {
+									car.fx = car.x;
+									car.fy = car.y;
 								}
 								return;
 							}
