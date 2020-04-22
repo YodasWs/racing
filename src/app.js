@@ -816,15 +816,11 @@ function closestPoint(pathNode, point) {
 function buildReplay(raceTrack) {
 	console.log('Sam, let\'s do this!');
 	const {
-		ArcFollowCamera,
-		ArcRotateCamera,
 		Animation,
 		Color3,
 		Engine,
-		FollowCamera,
 		HemisphericLight,
 		MeshBuilder,
-		PolygonMeshBuilder,
 		Scene,
 		StandardMaterial,
 		UniversalCamera,
@@ -838,18 +834,13 @@ function buildReplay(raceTrack) {
 	scene.useRightHandedSystem = true;
 	new HemisphericLight('light1', new Vector3(0, 1, 0), scene);
 
-	const uCamera = new UniversalCamera('universalCamera', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene);
-
-	const fCamera = new FollowCamera('followCamera', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene);
-	fCamera.radius = 90;
-	fCamera.heightOffset = 80;
-	fCamera.rotationOffset = 0;
-	fCamera.cameraAcceleration = 0.05;
-	fCamera.maxCameraSpeed = 10;
-
-	const rCamera = new ArcRotateCamera('rotateCamera', -Math.PI / 2, Math.PI / 2 - Math.PI / 8, 100, new Vector3(0, 0, 0), scene);
-
 	console.log('Sam, activeCamera:', scene.activeCamera)
+
+	const cameras = [
+		new UniversalCamera('universalCamera', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene),
+		new UniversalCamera('universalCamera', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
+		new UniversalCamera('universalCamera', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
+	];
 
 	// uCamera.attachControl(canvas, false);
 
@@ -901,10 +892,7 @@ function buildReplay(raceTrack) {
 			diameter: car.radius * 2,
 		}, scene);
 		if (car.name === 'Charlotte') {
-			// uCamera.setTarget(new Vector3(pos.x, car.radius, pos.y));
-			fCamera.lockedTarget = car.sphere;
-			uCamera.lockedTarget = car.sphere;
-			rCamera.lockedTarget = car.sphere;
+			cameras.forEach(camera => camera.lockedTarget = car.sphere);
 		}
 		car.sphere.position = new Vector3(pos.x, car.radius, pos.y);
 
@@ -926,8 +914,8 @@ function buildReplay(raceTrack) {
 
 			const poKeys = [];
 			const roKeys = [];
-			const moveAnime = new Animation(`anime${car.name}`, 'position', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
-			const spinAnime = new Animation(`anime${car.name}`, 'rotation', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
+			const moveAnime = new Animation(`anime${car.name}`, 'position', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CONSTANT);
+			const spinAnime = new Animation(`anime${car.name}`, 'rotation', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CONSTANT);
 			car.pos.forEach((frame) => {
 				xr -= frame.vx * Math.PI / 16;
 				yr += frame.vy * Math.PI / 16;
@@ -942,26 +930,36 @@ function buildReplay(raceTrack) {
 			});
 			moveAnime.setKeys(poKeys);
 			spinAnime.setKeys(roKeys);
+
+			// Set functions to reset and restart animations
 			car.sphere.animations = [moveAnime, spinAnime];
+
+			// Set function to start animations
 			setTimeout(() => {
-				scene.beginAnimation(car.sphere, 0, poKeys[poKeys.length - 1].frame, true);
+				car.anime = scene.beginAnimation(car.sphere, 0, poKeys[poKeys.length - 1].frame, true);
 			}, 1200);
 		});
 	}
 
-	scene.activeCamera = uCamera;
+	scene.activeCamera = cameras[0];
+
+	scene.beforeRender = (...args) => {
+		// console.log('Sam, beforeRender:', args);
+	};
+	const charlotte = cars.find(c => c.name === 'Charlotte');
 
 	let j = 0;
 	let k = 0;
+	let n = 0;
 	engine.runRenderLoop(() => {
 		scene.render();
 		j++;
 		if (j % 500 === 1) {
-			uCamera.lockedTarget = cars[k % cars.length].sphere;
-			scene.activeCamera = uCamera;
+			cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
+			scene.activeCamera = cameras[n % cameras.length];
 		} else if (j % 500 === 251) {
-			rCamera.lockedTarget = cars[k++ % cars.length].sphere;
-			scene.activeCamera = rCamera;
+			cameras[++n % cameras.length].lockedTarget = cars[k++ % cars.length].sphere;
+			scene.activeCamera = cameras[n % cameras.length];
 		}
 	});
 	window.addEventListener('resize', () => {
