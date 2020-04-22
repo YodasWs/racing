@@ -82,7 +82,7 @@ yodasws.page('home').setRoute({
 	];
 	/**/
 
-	const raceTrack = new RaceTrack(svg, OvalCourse.map(piece => new TrackPiece(piece)), [
+	let raceTrack = new RaceTrack(svg, OvalCourse.map(piece => new TrackPiece(piece)), [
 		new Car('Alice', {
 			color: 'lightgreen',
 			color2: 'orange',
@@ -93,7 +93,7 @@ yodasws.page('home').setRoute({
 			color2: 'black',
 			r: 3,
 			strokeWidth: 3,
-			rgb: [0, 0, 0],
+			rgb: [0x44, 0x44, 0x44],
 		}),
 		new Car('Charlotte', {
 			color: '#249E57',
@@ -163,6 +163,23 @@ yodasws.page('home').setRoute({
 		evt.preventDefault();
 		raceTrack.simulation.tick();
 		raceTrack.onTick();
+	});
+
+	document.querySelector('input[type="file"]').addEventListener('change', (evt) => {
+		const file = evt.target.files[0];
+		if (file.type !== 'application/json') {
+			evt.preventDefault();
+			return;
+		}
+
+		const reader = new FileReader();
+		reader.onload = ((jsonFile) => (e) => {
+			const json = JSON.parse(e.target.result);
+			raceTrack = RaceTrack.fromJson(json, svg);
+			raceTrack.simulation.stop();
+			buildReplay(raceTrack);
+		})(file);
+		reader.readAsText(file);
 	});
 });
 
@@ -278,7 +295,7 @@ function TrackPiece(options) {
 	})();
 }
 
-function RaceTrack(svg, track, cars, options) {
+function RaceTrack(svg, track, cars, options = {}) {
 	const simulation = d3.forceSimulation();
 
 	Object.assign(this, {
@@ -324,6 +341,20 @@ function RaceTrack(svg, track, cars, options) {
 		this.setCars(cars);
 	}
 }
+
+RaceTrack.fromJson = (json, svg = null) => {
+	if (!(svg instanceof SVGElement)) {
+		svg = document.querySelector('svg');
+	}
+
+	// function RaceTrack(svg, track, cars, options)
+	return new RaceTrack(
+		svg,
+		json.gradients.map(piece => new TrackPiece(piece)),
+		json.cars
+	);
+};
+
 Object.defineProperties(RaceTrack.prototype, {
 	init: {
 		enumerable: true,
@@ -383,7 +414,7 @@ Object.defineProperties(RaceTrack.prototype, {
 					delete car.sphere;
 				});
 				const link = document.createElement('a');
-				link.setAttribute('href', `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(this.cars))}`);
+				link.setAttribute('href', `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(this))}`);
 				const now = new Date();
 				link.setAttribute('download', `race-${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}.json`);
 				link.innerText = 'Save race data';
@@ -688,7 +719,7 @@ Object.defineProperties(RaceTrack.prototype, {
 	},
 });
 
-function Car(name, options) {
+function Car(name, options = {}) {
 	Object.assign(this, {
 		strokeWidth: 1,
 		r: 4,
