@@ -957,12 +957,22 @@ function buildReplay(raceTrack) {
 					// Update angles
 					yr += d;
 					zr -= v * Math.PI / 16;
-					roKeys.push({
-						frame: frame.tick * df,
-						value: new Vector3(0, yr, zr),
-					});
 				}
+				roKeys.push({
+					frame: frame.tick * df,
+					value: new Vector3(0, yr, zr),
+				});
 			});
+
+			poKeys.push({
+				frame: poKeys[poKeys.length - 1].frame + 120,
+				value: poKeys[poKeys.length - 1].value,
+			});
+			roKeys.push({
+				frame: roKeys[roKeys.length - 1].frame + 120,
+				value: roKeys[roKeys.length - 1].value,
+			});
+
 			moveAnime.setKeys(poKeys);
 			spinAnime.setKeys(roKeys);
 
