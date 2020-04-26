@@ -819,9 +819,9 @@ function buildReplay(raceTrack) {
 		Animation,
 		Color3,
 		Color4,
+		DirectionalLight,
 		Engine,
 		FlyCamera,
-		HemisphericLight,
 		MeshBuilder,
 		Scene,
 		StandardMaterial,
@@ -834,7 +834,13 @@ function buildReplay(raceTrack) {
 	const engine = new Engine(canvas, true);
 	const scene = new Scene(engine);
 	scene.useRightHandedSystem = true;
-	new HemisphericLight('light1', new Vector3(0, 1, 0), scene);
+	scene.clearColor = new Color3(0x7f / 0xff, 0xc1 / 0xff, 0xf3 / 0xff);
+	scene.ambientColor = new Color3(0.7, 0.7, 0.7);
+
+	// Add Lights
+	let sun = new DirectionalLight('light2', new Vector3(1, -1, 1), scene);
+	sun.diffuse = new Color3(0.8, 0.8, 0.8);
+	sun.intensity = 0.5;
 
 	const cameras = [
 		new UniversalCamera('universalCamera1', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene),
@@ -864,13 +870,17 @@ function buildReplay(raceTrack) {
 	);
 	const grass = new StandardMaterial('grass', scene);
 	grass.diffuseColor = new Color3(0x56 / 0xff, 0x7d / 0xff, 0x46 / 0xff);
+	grass.ambientColor = new Color3(0x56 / 0xff, 0x7d / 0xff, 0x46 / 0xff);
 	ground.material = grass;
 	const asphalt = new StandardMaterial('asphalt', scene);
 	asphalt.diffuseColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff);
+	asphalt.ambientColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff);
 	const black = new StandardMaterial('black', scene);
 	black.diffuseColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
+	black.ambientColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
 	const siding = new StandardMaterial('siding', scene);
 	siding.diffuseColor = new Color3(0xeb / 0xff, 0x58 / 0xff, 0x63 / 0xff);
+	siding.ambientColor = new Color3(0xeb / 0xff, 0x58 / 0xff, 0x63 / 0xff);
 
 	// Build the track
 	const precision = 100;
@@ -939,6 +949,7 @@ function buildReplay(raceTrack) {
 		if (car.rgb instanceof Array) {
 			const material = new StandardMaterial(`${car.name}Material`, scene);
 			material.diffuseColor = new Color3(...car.rgb.map(c => c / 0xff));
+			material.ambientColor = new Color3(...car.rgb.map(c => c / 0xff));
 			material.diffuseTexture = new BABYLON.Texture('ball.png', scene);
 			car.sphere.material = material;
 		}
