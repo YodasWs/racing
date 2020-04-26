@@ -818,7 +818,9 @@ function buildReplay(raceTrack) {
 	const {
 		Animation,
 		Color3,
+		Color4,
 		Engine,
+		FlyCamera,
 		HemisphericLight,
 		MeshBuilder,
 		Scene,
@@ -834,12 +836,11 @@ function buildReplay(raceTrack) {
 	scene.useRightHandedSystem = true;
 	new HemisphericLight('light1', new Vector3(0, 1, 0), scene);
 
-	console.log('Sam, activeCamera:', scene.activeCamera)
-
 	const cameras = [
-		new UniversalCamera('universalCamera', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene),
-		new UniversalCamera('universalCamera', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
-		new UniversalCamera('universalCamera', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
+		new UniversalCamera('universalCamera1', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene),
+		new FlyCamera('flyCamera1', new Vector3(-80, 30, 0), scene),
+		new UniversalCamera('universalCamera2', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
+		new UniversalCamera('universalCamera3', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
 	];
 
 	// uCamera.attachControl(canvas, false);
@@ -913,9 +914,6 @@ function buildReplay(raceTrack) {
 			segments: 16,
 			diameter: car.radius * 2,
 		}, scene);
-		if (car.name === 'Charlotte') {
-			cameras.forEach(camera => camera.lockedTarget = car.sphere);
-		}
 		car.sphere.position = new Vector3(pos.x, car.radius, pos.y);
 
 		if (car.rgb instanceof Array) {
@@ -930,25 +928,40 @@ function buildReplay(raceTrack) {
 	if (cars[0].pos.length > 1) {
 		console.log('Sam, cars:', cars);
 
+		const df = 3; // Frames between ticks
+		const pi2 = Math.PI * 2;
+		const pi180 = 180 / Math.PI;
 		cars.forEach((car, i) => {
-			let xr = 0;
+			let zr = 0;
 			let yr = 0;
 
 			const poKeys = [];
 			const roKeys = [];
-			const moveAnime = new Animation(`anime${car.name}`, 'position', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
-			const spinAnime = new Animation(`anime${car.name}`, 'rotation', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
+			const moveAnime = new Animation(`moveAnime${car.name}`, 'position', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
+			const spinAnime = new Animation(`spinAnime${car.name}`, 'rotation', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
 			car.pos.forEach((frame) => {
-				xr -= frame.vx * Math.PI / 16;
-				yr += frame.vy * Math.PI / 16;
+				// Animate car positions
 				poKeys.push({
-					frame: frame.tick * 3,
+					frame: frame.tick * df,
 					value: new Vector3(frame.x, car.radius, frame.y),
 				});
-				roKeys.push({
-					frame: frame.tick * 3,
-					value: new Vector3(yr, 0, xr),
-				});
+				// Animate car rotation
+				const v = Math.hypot(frame.vx, frame.vy);
+				if (v > 0) {
+					// Angle car is now pointed
+					const α = -Math.sign(frame.vy) * Math.acos(frame.vx / v);
+					// Get angle difference within one full rotation in either direction
+					let d = α % pi2 - yr % pi2;
+					// Reverse direction to avoid spinning the wrong direction on a turn/bounce
+					while (Math.abs(d) > Math.PI) d = d - Math.sign(d) * pi2;
+					// Update angles
+					yr += d;
+					zr -= v * Math.PI / 16;
+					roKeys.push({
+						frame: frame.tick * df,
+						value: new Vector3(0, yr, zr),
+					});
+				}
 			});
 			moveAnime.setKeys(poKeys);
 			spinAnime.setKeys(roKeys);
