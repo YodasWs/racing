@@ -864,7 +864,9 @@ function buildReplay(raceTrack) {
 	grass.diffuseColor = new Color3(0x56 / 0xff, 0x7d / 0xff, 0x46 / 0xff);
 	ground.material = grass;
 	const asphalt = new StandardMaterial('asphalt', scene);
-	asphalt.diffuseColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff)
+	asphalt.diffuseColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff);
+	const black = new StandardMaterial('black', scene);
+	black.diffuseColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
 
 	// Build the track
 	const precision = 100;
@@ -881,6 +883,26 @@ function buildReplay(raceTrack) {
 		closePath: true,
 	}, scene);
 	track.material = asphalt;
+
+	// Add starting line
+	const gradStartLine = raceTrack.gradients[0];
+	const startLine = MeshBuilder.CreateLines('startLine', {
+		points: [
+			new Vector3(
+				gradStartLine.x - gradStartLine.width * Math.sin(gradStartLine.α),
+				0.02,
+				gradStartLine.y + gradStartLine.width * Math.cos(gradStartLine.α)
+			),
+			new Vector3(
+				gradStartLine.x + gradStartLine.width * Math.sin(gradStartLine.α),
+				0.02,
+				gradStartLine.y - gradStartLine.width * Math.cos(gradStartLine.α)
+			),
+		],
+		colors: new Array(2).fill(new Color4(0, 0, 0, 1)),
+		useVertexAlpha: false,
+	}, scene);
+	startLine.material = black;
 
 	const cars = raceTrack.cars.slice();
 
@@ -914,8 +936,8 @@ function buildReplay(raceTrack) {
 
 			const poKeys = [];
 			const roKeys = [];
-			const moveAnime = new Animation(`anime${car.name}`, 'position', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CONSTANT);
-			const spinAnime = new Animation(`anime${car.name}`, 'rotation', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CONSTANT);
+			const moveAnime = new Animation(`anime${car.name}`, 'position', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
+			const spinAnime = new Animation(`anime${car.name}`, 'rotation', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
 			car.pos.forEach((frame) => {
 				xr -= frame.vx * Math.PI / 16;
 				yr += frame.vy * Math.PI / 16;
