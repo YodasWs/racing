@@ -855,6 +855,7 @@ function buildReplay(raceTrack) {
 		height = width * 4 / 5;
 	}
 
+	// Define Surface Materials
 	const ground = MeshBuilder.CreateGround('ground1', { height, width, subdivisions: 2 }, scene);
 	ground.position = new Vector3(
 		(raceTrack.extrema[x][1] + raceTrack.extrema[x][0]) / 2,
@@ -868,19 +869,38 @@ function buildReplay(raceTrack) {
 	asphalt.diffuseColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff);
 	const black = new StandardMaterial('black', scene);
 	black.diffuseColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
+	const siding = new StandardMaterial('siding', scene);
+	siding.diffuseColor = new Color3(0xeb / 0xff, 0x58 / 0xff, 0x63 / 0xff);
 
 	// Build the track
 	const precision = 100;
-	const pathArray = [[], []];
+	const trackArray = [[], []];
+	const railArray = [[], []];
 	raceTrack.rails.forEach((rail, i) => {
 		const pathLength = rail.getTotalLength();
 		for (let j = 0; j < 100; j += 100 / precision) {
 			const point = rail.getPointAtLength(pathLength * j / 100);
-			pathArray[i].push(new Vector3(point.x, 0, point.y));
+			trackArray[i].push(new Vector3(point.x, 0, point.y));
+			railArray[i].push(new Vector3(point.x, 5, point.y));
 		}
 	});
+	railArray.forEach((path, i) => {
+		for (let j = 0; j < 2; j++) {
+			const pathArray = [
+				path,
+				trackArray[i],
+			];
+			if (j % 2) pathArray.reverse();
+			const rail = MeshBuilder.CreateRibbon(`rail${i}${j}`, {
+				pathArray,
+				closePath: true,
+			}, scene);
+			rail.material = siding;
+		}
+	});
+	// Build track after siding because of the array reverse
 	const track = MeshBuilder.CreateRibbon('track', {
-		pathArray: pathArray.reverse(),
+		pathArray: trackArray.reverse(),
 		closePath: true,
 	}, scene);
 	track.material = asphalt;
@@ -952,7 +972,7 @@ function buildReplay(raceTrack) {
 					const α = -Math.sign(frame.vy) * Math.acos(frame.vx / v);
 					// Get angle difference within one full rotation in either direction
 					let d = α % pi2 - yr % pi2;
-					// Reverse direction to avoid spinning the wrong direction on a turn/bounce
+					// Reverse direction to avoid spinning the wrong way on a turn/bounce
 					while (Math.abs(d) > Math.PI) d = d - Math.sign(d) * pi2;
 					// Update angles
 					yr += d;
