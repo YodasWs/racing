@@ -813,6 +813,12 @@ function closestPoint(pathNode, point) {
 	};
 }
 
+/* Documentation:
+ * https://doc.babylonjs.com/babylon101/discover_basic_elements
+ * https://doc.babylonjs.com/api/globals
+ * https://doc.babylonjs.com/how_to/gui3d
+ */
+
 function buildReplay(raceTrack) {
 	console.log('Sam, let\'s do this!');
 	const {
@@ -821,10 +827,12 @@ function buildReplay(raceTrack) {
 		Color4,
 		DirectionalLight,
 		Engine,
-		FlyCamera,
+		Mesh,
 		MeshBuilder,
 		Scene,
+		SkyMaterial,
 		StandardMaterial,
+		Texture,
 		UniversalCamera,
 		Vector3,
 	} = BABYLON;
@@ -834,22 +842,37 @@ function buildReplay(raceTrack) {
 	const engine = new Engine(canvas, true);
 	const scene = new Scene(engine);
 	scene.useRightHandedSystem = true;
-	scene.clearColor = new Color3(0x7f / 0xff, 0xc1 / 0xff, 0xf3 / 0xff);
 	scene.ambientColor = new Color3(0.7, 0.7, 0.7);
 
-	// Add Lights
-	let sun = new DirectionalLight('light2', new Vector3(1, -1, 1), scene);
+	// Build the sky
+	const skyMaterial = new SkyMaterial('sky', scene);
+	skyMaterial.backFaceCulling = false;
+	skyMaterial.luminance = 0.1;
+	skyMaterial.useSunPosition = true; // Do not set sun position from azimuth and inclination
+	skyMaterial.sunPosition = new Vector3(10, 3, 0);
+	skyMaterial.turbidity = 2;
+	skyMaterial.rayleigh = 3;
+	skyMaterial.cameraOffset.y = 200;
+
+	const skybox = Mesh.CreateBox('skyBox', 1000.0, scene);
+	skybox.material = skyMaterial;
+
+	// Add Light from Sun
+	const sun = new DirectionalLight('light2', skyMaterial.sunPosition.negate(), scene);
 	sun.diffuse = new Color3(0.8, 0.8, 0.8);
 	sun.intensity = 0.5;
 
 	const cameras = [
 		new UniversalCamera('universalCamera1', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene),
-		new FlyCamera('flyCamera1', new Vector3(-80, 30, 0), scene),
-		new UniversalCamera('universalCamera2', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
-		new UniversalCamera('universalCamera3', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
+		new UniversalCamera('universalCamera2', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
+		new UniversalCamera('universalCamera3', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
 	];
 
-	// uCamera.attachControl(canvas, false);
+	/*
+	cameras.forEach((cam) => {
+		cam.attachControl(canvas, false);
+	});
+	/**/
 
 	const buffer = 10;
 	let width = raceTrack.extrema[x][1] - raceTrack.extrema[x][0] + buffer * 2;
@@ -950,7 +973,7 @@ function buildReplay(raceTrack) {
 			const material = new StandardMaterial(`${car.name}Material`, scene);
 			material.diffuseColor = new Color3(...car.rgb.map(c => c / 0xff));
 			material.ambientColor = new Color3(...car.rgb.map(c => c / 0xff));
-			material.diffuseTexture = new BABYLON.Texture('ball.png', scene);
+			material.diffuseTexture = new Texture('ball.png', scene);
 			car.sphere.material = material;
 		}
 	});
