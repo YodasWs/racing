@@ -835,6 +835,7 @@ function buildReplay(raceTrack) {
 		Texture,
 		UniversalCamera,
 		Vector3,
+		GUI,
 	} = BABYLON;
 
 	// First set the scene
@@ -842,12 +843,12 @@ function buildReplay(raceTrack) {
 	const engine = new Engine(canvas, true);
 	const scene = new Scene(engine);
 	scene.useRightHandedSystem = true;
-	scene.ambientColor = new Color3(0.7, 0.7, 0.7);
+	scene.ambientColor = new Color3(0.8, 0.8, 0.8);
 
 	// Build the sky
 	const skyMaterial = new SkyMaterial('sky', scene);
 	skyMaterial.backFaceCulling = false;
-	skyMaterial.luminance = 0.1;
+	skyMaterial.luminance = 0.2;
 	skyMaterial.useSunPosition = true; // Do not set sun position from azimuth and inclination
 	skyMaterial.sunPosition = new Vector3(10, 3, 0);
 	skyMaterial.turbidity = 2;
@@ -896,8 +897,8 @@ function buildReplay(raceTrack) {
 	grass.ambientColor = new Color3(0x56 / 0xff, 0x7d / 0xff, 0x46 / 0xff);
 	ground.material = grass;
 	const asphalt = new StandardMaterial('asphalt', scene);
-	asphalt.diffuseColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff);
-	asphalt.ambientColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff);
+	asphalt.diffuseColor = new Color3(0xc7 / 0xff, 0xc5 / 0xff, 0xca / 0xff);
+	asphalt.ambientColor = new Color3(0xc7 / 0xff, 0xc5 / 0xff, 0xca / 0xff);
 	const black = new StandardMaterial('black', scene);
 	black.diffuseColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
 	black.ambientColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
@@ -918,18 +919,16 @@ function buildReplay(raceTrack) {
 		}
 	});
 	railArray.forEach((path, i) => {
-		for (let j = 0; j < 2; j++) {
-			const pathArray = [
-				path,
-				trackArray[i],
-			];
-			if (j % 2) pathArray.reverse();
-			const rail = MeshBuilder.CreateRibbon(`rail${i}${j}`, {
-				pathArray,
-				closePath: true,
-			}, scene);
-			rail.material = siding;
-		}
+		const pathArray = [
+			path,
+			trackArray[i],
+		];
+		const rail = MeshBuilder.CreateRibbon(`rail${i}${j}`, {
+			sideOrientation: Mesh.DOUBLESIDE,
+			pathArray,
+			closePath: true,
+		}, scene);
+		rail.material = siding;
 	});
 	// Build track after siding because of the array reverse
 	const track = MeshBuilder.CreateRibbon('track', {
@@ -977,6 +976,19 @@ function buildReplay(raceTrack) {
 			car.sphere.material = material;
 		}
 	});
+
+	((GUI) => {
+		const {
+			AdvancedDynamicTexture,
+			Control,
+			TextBlock,
+			XmlLoader,
+		} = GUI;
+
+		const advancedTexture = new AdvancedDynamicTexture.CreateFullscreenUI('myUI');
+		const xmlLoader = new XmlLoader(raceTrack);
+		xmlLoader.loadLayout('layout.xml', advancedTexture);
+	})(GUI);
 
 	// Build Replay Animation
 	if (cars[0].pos.length > 1) {
