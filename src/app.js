@@ -850,7 +850,7 @@ function buildReplay(raceTrack) {
 	skyMaterial.backFaceCulling = false;
 	skyMaterial.luminance = 0.2;
 	skyMaterial.useSunPosition = true; // Do not set sun position from azimuth and inclination
-	skyMaterial.sunPosition = new Vector3(10, 3, 0);
+	skyMaterial.sunPosition = new Vector3(10, 3, 1);
 	skyMaterial.turbidity = 2;
 	skyMaterial.rayleigh = 3;
 	skyMaterial.cameraOffset.y = 200;
@@ -897,8 +897,8 @@ function buildReplay(raceTrack) {
 	grass.ambientColor = new Color3(0x56 / 0xff, 0x7d / 0xff, 0x46 / 0xff);
 	ground.material = grass;
 	const asphalt = new StandardMaterial('asphalt', scene);
-	asphalt.diffuseColor = new Color3(0xc7 / 0xff, 0xc5 / 0xff, 0xca / 0xff);
-	asphalt.ambientColor = new Color3(0xc7 / 0xff, 0xc5 / 0xff, 0xca / 0xff);
+	asphalt.diffuseColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff);
+	asphalt.ambientColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff);
 	const black = new StandardMaterial('black', scene);
 	black.diffuseColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
 	black.ambientColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
