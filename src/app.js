@@ -923,7 +923,7 @@ function buildReplay(raceTrack) {
 			path,
 			trackArray[i],
 		];
-		const rail = MeshBuilder.CreateRibbon(`rail${i}${j}`, {
+		const rail = MeshBuilder.CreateRibbon(`rail${i}`, {
 			sideOrientation: Mesh.DOUBLESIDE,
 			pathArray,
 			closePath: true,
@@ -977,15 +977,14 @@ function buildReplay(raceTrack) {
 		}
 	});
 
-	let numFrames = 5;
+	let numFrames = 7;
+	const df = 3; // Frames between ticks
 
 	// Build Replay Animation
 	if (cars[0].pos.length > 1) {
 		console.log('Sam, cars:', cars);
 
-		const df = 3; // Frames between ticks
-		const pi2 = Math.PI * 2;
-		const pi180 = 180 / Math.PI;
+		const TwoPi = Math.PI * 2;
 		cars.forEach((car, i) => {
 			let zr = 0;
 			let yr = 0;
@@ -1006,9 +1005,9 @@ function buildReplay(raceTrack) {
 					// Angle car is now pointed
 					const α = -Math.sign(frame.vy) * Math.acos(frame.vx / v);
 					// Get angle difference within one full rotation in either direction
-					let d = α % pi2 - yr % pi2;
+					let d = α % TwoPi - yr % TwoPi;
 					// Reverse direction to avoid spinning the wrong way on a turn/bounce
-					while (Math.abs(d) > Math.PI) d = d - Math.sign(d) * pi2;
+					while (Math.abs(d) > Math.PI) d = d - Math.sign(d) * TwoPi;
 					// Update angles
 					yr += d;
 					zr -= v * Math.PI / 16;
@@ -1057,44 +1056,95 @@ function buildReplay(raceTrack) {
 		const advancedTexture = new AdvancedDynamicTexture.CreateFullscreenUI('myUI');
 		advancedTexture.useInvalidateRectOptimization = false;
 		advancedTexture.renderScale = 4;
-		const xmlLoader = new XmlLoader(raceTrack);
-		xmlLoader.loadLayout('layout.xml', advancedTexture);
-		console.log('Sam, advancedTexture:', advancedTexture);
 
-		return function(j) {
-			console.log('Sam, adt.getChildren():', advancedTexture.getChildren());
-			console.log('Sam, names:', xmlLoader.getNodeById('names'));
+		const orderByTickDesc = (a, b) => b.tick - a.tick;
+
+		// Simplified array to keep relative positions during animation
+		const carOrder = cars.slice().map((car) => {
+			return {
+				name: car.name,
+				time: car.time.slice().sort(orderByTickDesc),
+				pos: car.pos.slice().sort(orderByTickDesc),
+				idxTime: 0,
+				idxPos: 0,
+			};
+		});
+
+		return function(tick) {
+			console.log('Sam, tick:', tick);
+			carOrder.forEach((car) => {
+				car.idxTime = car.time.indexOf(car.time.find(time => time.tick <= tick));
+				car.idxPos = car.pos.indexOf(car.pos.find(pos => pos.tick <= tick));
+				if (car.name === 'Charlotte') console.log('Sam, idxTime:', car.idxTime);
+			});
+
+			[...advancedTexture.getChildren()[0].children].forEach(c => advancedTexture.removeControl(c));
+
+			carOrder.sort((a, b) => {
+				if (a.idxTime > b.idxTime) return -1;
+				if (a.idxTime < b.idxTime) return 1;
+				if (a.time.length === 0 && b.time.length === 0) return 0;
+				if (a.time.length === 0) return 1;
+				if (b.time.length === 0) return -1;
+				if (a.idxTime < 0 && b.idxTime < 0) return 0;
+				if (a.idxTime < 0) return 1;
+				if (b.idxTime < 0) return -1;
+				if (a.time[a.idxTime].time > b.time[b.idxTime].time) return 1;
+				if (a.time[a.idxTime].time < b.time[b.idxTime].time) return -1;
+				return 0;
+			}).forEach((car, i) => {
+				const txt = new TextBlock();
+				txt.text = car.name;
+				txt.fontSize = 70;
+				txt.color = 'black';
+				// txt.paddingBottom = '5px';
+				txt.paddingLeft = '10px';
+				txt.paddingTop = '5px';
+				// txt.background = 'white';
+				txt.top = i * 90;
+				txt.outlineWidth = 2;
+				txt.outlineColor = 'white';
+				txt.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+				txt.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+				advancedTexture.addControl(txt);
+			});
 		};
 	})(GUI);
 
 	scene.activeCamera = cameras[0];
 
-	scene.beforeRender = (...args) => {
+	/*
+	scene.beforeRender = (scene, ...args) => {
 		console.log('Sam, beforeRender:', args);
 	};
-	scene.afterRender = (...args) => {
+	scene.afterRender = (scene, ...args) => {
 		console.log('Sam, afterRender:', args);
 		// TODO: Add frame to movie for export
 	};
+	/**/
 
-	let j = 0;
+	let frame = 0;
+	console.log('Sam, numFrames:', numFrames);
+	console.log('Sam, num ticks:', numFrames / df);
 	let k = 0;
 	let n = 0;
-	engine.runRenderLoop((...args) => {
-		console.log('Sam, runRenderLoop:', args);
+	engine.runRenderLoop(() => {
 		scene.render();
-		j++;
-		if (j % 500 === 1) {
+
+		if (frame % (df * 10) === 0) {
+			drawOverlay(frame / df);
+		}
+
+		frame++;
+		if (frame % 500 === 1) {
 			cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
 			scene.activeCamera = cameras[n % cameras.length];
-		} else if (j % 500 === 251) {
+		} else if (frame % 500 === 251) {
 			cameras[++n % cameras.length].lockedTarget = cars[k++ % cars.length].sphere;
 			scene.activeCamera = cameras[n % cameras.length];
 		}
 
-		drawOverlay(j);
-
-		if (j >= numFrames) {
+		if (frame >= numFrames) {
 			engine.stopRenderLoop();
 		}
 	});
