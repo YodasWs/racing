@@ -977,18 +977,7 @@ function buildReplay(raceTrack) {
 		}
 	});
 
-	((GUI) => {
-		const {
-			AdvancedDynamicTexture,
-			Control,
-			TextBlock,
-			XmlLoader,
-		} = GUI;
-
-		const advancedTexture = new AdvancedDynamicTexture.CreateFullscreenUI('myUI');
-		const xmlLoader = new XmlLoader(raceTrack);
-		xmlLoader.loadLayout('layout.xml', advancedTexture);
-	})(GUI);
+	let numFrames = 5;
 
 	// Build Replay Animation
 	if (cars[0].pos.length > 1) {
@@ -1038,6 +1027,7 @@ function buildReplay(raceTrack) {
 				frame: roKeys[roKeys.length - 1].frame + 120,
 				value: roKeys[roKeys.length - 1].value,
 			});
+			numFrames = Math.max(numFrames, poKeys[poKeys.length - 1].frame, roKeys[roKeys.length - 1].frame);
 
 			moveAnime.setKeys(poKeys);
 			spinAnime.setKeys(roKeys);
@@ -1052,17 +1042,46 @@ function buildReplay(raceTrack) {
 		});
 	}
 
+	/*
+	 * https://doc.babylonjs.com/api/modules/babylon.gui
+	 */
+	// Display position information in screen overlay
+	const drawOverlay = ((GUI) => {
+		const {
+			AdvancedDynamicTexture,
+			Control,
+			TextBlock,
+			XmlLoader,
+		} = GUI;
+
+		const advancedTexture = new AdvancedDynamicTexture.CreateFullscreenUI('myUI');
+		advancedTexture.useInvalidateRectOptimization = false;
+		advancedTexture.renderScale = 4;
+		const xmlLoader = new XmlLoader(raceTrack);
+		xmlLoader.loadLayout('layout.xml', advancedTexture);
+		console.log('Sam, advancedTexture:', advancedTexture);
+
+		return function(j) {
+			console.log('Sam, adt.getChildren():', advancedTexture.getChildren());
+			console.log('Sam, names:', xmlLoader.getNodeById('names'));
+		};
+	})(GUI);
+
 	scene.activeCamera = cameras[0];
 
 	scene.beforeRender = (...args) => {
-		// console.log('Sam, beforeRender:', args);
+		console.log('Sam, beforeRender:', args);
 	};
-	const charlotte = cars.find(c => c.name === 'Charlotte');
+	scene.afterRender = (...args) => {
+		console.log('Sam, afterRender:', args);
+		// TODO: Add frame to movie for export
+	};
 
 	let j = 0;
 	let k = 0;
 	let n = 0;
-	engine.runRenderLoop(() => {
+	engine.runRenderLoop((...args) => {
+		console.log('Sam, runRenderLoop:', args);
 		scene.render();
 		j++;
 		if (j % 500 === 1) {
@@ -1071,6 +1090,12 @@ function buildReplay(raceTrack) {
 		} else if (j % 500 === 251) {
 			cameras[++n % cameras.length].lockedTarget = cars[k++ % cars.length].sphere;
 			scene.activeCamera = cameras[n % cameras.length];
+		}
+
+		drawOverlay(j);
+
+		if (j >= numFrames) {
+			engine.stopRenderLoop();
 		}
 	});
 	window.addEventListener('resize', () => {

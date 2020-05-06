@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<root>
+	<StackPanel id="names"
+		background="white"
+		horizontalAlignment="Control.HORIZONTAL_ALIGNMENT_LEFT"
+		verticalAlignment="Control.VERTICAL_ALIGNMENT_TOP"
+		width="0.2"
+		shadowColor="black"
+		shadowOffsetX="1"
+		shadowOffsetY="1"
+		clipChildren="false"
+		clipContent="false"
+		top="0" left="0" dataSource="car in {cars}">
+		<TextBlock text="{{car.name}}" color="black" resizeToFit="true"
+			horizontalAlignment="Control.HORIZONTAL_ALIGNMENT_LEFT"
+			textHorizontalAlignment="Control.HORIZONTAL_ALIGNMENT_LEFT"
+			fontSize="70"
+			/>
+	</StackPanel>
+</root>
