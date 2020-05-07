@@ -1104,8 +1104,13 @@ function buildReplay(raceTrack) {
 
 				if (aTime.lap < bTime.lap) return 1;
 				if (aTime.lap > bTime.lap) return -1;
-				if (aTime.piece < bTime.piece) return 1;
-				if (aTime.piece > bTime.piece) return -1;
+				if (aTime.piece !== bTime.piece) {
+					// Piece 0 is last piece of the lap
+					if (aTime.piece === 0) return -1;
+					if (bTime.piece === 0) return 1;
+					if (aTime.piece < bTime.piece) return 1;
+					if (aTime.piece > bTime.piece) return -1;
+				}
 				if (aTime.tick < bTime.tick) return -1;
 				if (aTime.tick > bTime.tick) return 1;
 
