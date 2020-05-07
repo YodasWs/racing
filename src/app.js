@@ -1059,13 +1059,14 @@ function buildReplay(raceTrack) {
 		const {
 			AdvancedDynamicTexture,
 			Control,
+			StackPanel,
 			TextBlock,
 			XmlLoader,
 		} = GUI;
 
 		const advancedTexture = new AdvancedDynamicTexture.CreateFullscreenUI('myUI');
 		advancedTexture.useInvalidateRectOptimization = false;
-		advancedTexture.renderScale = 4;
+		advancedTexture.renderScale = 2;
 
 		const orderByTickDesc = (a, b) => b.tick - a.tick;
 
@@ -1074,9 +1075,7 @@ function buildReplay(raceTrack) {
 			return {
 				name: car.name,
 				time: car.time.slice().sort(orderByTickDesc),
-				pos: car.pos.slice().sort(orderByTickDesc),
 				idxTime: 0,
-				idxPos: 0,
 			};
 		});
 
@@ -1087,8 +1086,18 @@ function buildReplay(raceTrack) {
 			// Get position of cars' positions at the frame
 			carOrder.forEach((car) => {
 				car.idxTime = car.time.indexOf(car.time.find(time => time.tick <= tick));
-				car.idxPos = car.pos.indexOf(car.pos.find(pos => pos.tick <= tick));
 			});
+
+			const panelPositions = new StackPanel();
+			panelPositions.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+			panelPositions.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+			panelPositions.background = 'white';
+			panelPositions.width = '0.1';
+			panelPositions.top = '0';
+			panelPositions.left = '0';
+			panelPositions.clipChildren = false;
+			panelPositions.clipContent = false;
+			advancedTexture.addControl(panelPositions);
 
 			// Sort cars in order of race position
 			carOrder.sort((a, b) => {
@@ -1122,13 +1131,10 @@ function buildReplay(raceTrack) {
 				txt.fontSize = 70;
 				txt.color = 'black';
 				txt.paddingLeft = '10px';
-				txt.paddingTop = '5px';
-				txt.top = i * 90;
-				txt.outlineWidth = 2;
-				txt.outlineColor = 'white';
+				txt.height = '90px';
 				txt.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
 				txt.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-				advancedTexture.addControl(txt);
+				panelPositions.addControl(txt);
 			});
 		};
 	})(GUI);
@@ -1170,10 +1176,11 @@ function buildReplay(raceTrack) {
 
 		// Animation finished, do not continue
 		if (frame >= numFrames) {
-			clearInterval(aniInterval);
+			// clearInterval(aniInterval);
 		}
 	}, 1000 / fps);
 
+	engine.resize();
 	window.addEventListener('resize', () => {
 		engine.resize();
 	});

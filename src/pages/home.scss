@@ -79,7 +79,11 @@
 		display: block;
 		margin: 0 auto;
 		border: 1px inset lightgrey;
-		width: 500px;
-		height: 400px;
+		$ratio: 16 / 9;
+		$height: 1080px;
+		height: $height;
+		width: $height * $ratio;
+		$scale: 13 / 36;
+		transform: scale($scale) translate(-50% * (1 / $scale - 1), -50% * (1 / $scale - 1));
 	}
 }
