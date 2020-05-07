@@ -184,6 +184,7 @@ yodasws.page('home').setRoute({
 });
 
 const gravity = 1 / 10;
+const correctiveStrength = 1 / 9;
 
 function TrackPiece(options) {
 	Object.assign(this, {
@@ -210,27 +211,33 @@ function TrackPiece(options) {
 				if (node.trackAhead.length === 0) return;
 				if (node.trackAhead[0] !== piece) return;
 
-				// Apply force in direction g-v to move v towards g
+				// Apply force to move v towards g
+				const speed = Math.hypot(node.vx, node.vy);
+				const v = [node.vx / speed, node.vy / speed];
+				const normalizedGradient = piece.gradient.map(d => d / Math.hypot(...piece.gradient));
 				let acceleration = [
-					piece.gradient[x] - node.vx,
-					piece.gradient[y] - node.vy,
+					normalizedGradient[x] - v[x],
+					normalizedGradient[y] - v[y],
 				];
 
-				// If acceleration is pointed in the wrong direction, don't use it
-				if (Math.hypot(node.vx, node.vy) !== 0 && Math.acos((
-					acceleration[x] * node.vx + acceleration[y] * node.vy
-				) / Math.hypot(...acceleration) / Math.hypot(node.vx, node.vy)) > Math.PI / 2) {
+				// If acceleration in same direction as velocity, zero it
+				const angle = Math.acos((
+					acceleration[x] * v[x] + acceleration[y] * v[y]
+				) / Math.hypot(...acceleration));
+				if (Number.isNaN(angle) || angle * 180 / Math.PI < Number.EPSILON) {
 					acceleration = [0, 0];
 				}
 
-				// Add gradient to acceleration to more strongly force movement in that direction
-				acceleration = acceleration.map((d, i) => d + piece.gradient[i]);
-
-				// Normalize acceleration and scale by gravity
+				// Normalize acceleration and scale by correctiveStrength
 				const a = Math.hypot(...acceleration);
-				acceleration = acceleration.map(d => d / a);
-				node.vx += gravity * acceleration[x] * alpha;
-				node.vy += gravity * acceleration[y] * alpha;
+				if (a > 0) acceleration = acceleration.map(d => d / a * correctiveStrength);
+
+				// Add gradient to acceleration to more strongly force movement in that direction
+				acceleration = acceleration.map((d, i) => d + normalizedGradient[i] * gravity);
+
+				// Apply alpha decay and add to velocity
+				node.vx += acceleration[x] * alpha;
+				node.vy += acceleration[y] * alpha;
 
 				const nextPosition = [node.x + node.vx, node.y + node.vy];
 
