@@ -825,9 +825,11 @@ function closestPoint(pathNode, point) {
  * https://doc.babylonjs.com/api/globals
  * https://doc.babylonjs.com/how_to/gui3d
  */
+let aniInterval;
 
 function buildReplay(raceTrack) {
 	console.log('Sam, let\'s do this!');
+	clearInterval(aniInterval);
 	const {
 		Animation,
 		Color3,
@@ -986,6 +988,7 @@ function buildReplay(raceTrack) {
 
 	let numFrames = 7;
 	const df = 3; // Frames between ticks
+	const fps = 30; // Frames per second to render
 
 	// Build Replay Animation
 	if (cars[0].pos.length > 1) {
@@ -998,8 +1001,8 @@ function buildReplay(raceTrack) {
 
 			const poKeys = [];
 			const roKeys = [];
-			const moveAnime = new Animation(`moveAnime${car.name}`, 'position', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
-			const spinAnime = new Animation(`spinAnime${car.name}`, 'rotation', 60, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
+			const moveAnime = new Animation(`moveAnime${car.name}`, 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
+			const spinAnime = new Animation(`spinAnime${car.name}`, 'rotation', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
 			car.pos.forEach((frame) => {
 				// Animate car positions
 				poKeys.push({
@@ -1078,36 +1081,43 @@ function buildReplay(raceTrack) {
 		});
 
 		return function(tick) {
-			console.log('Sam, tick:', tick);
+			// Clear overlay for redrawing
+			[...advancedTexture.getChildren()[0].children].forEach(c => advancedTexture.removeControl(c));
+
+			// Get position of cars' positions at the frame
 			carOrder.forEach((car) => {
 				car.idxTime = car.time.indexOf(car.time.find(time => time.tick <= tick));
 				car.idxPos = car.pos.indexOf(car.pos.find(pos => pos.tick <= tick));
-				if (car.name === 'Charlotte') console.log('Sam, idxTime:', car.idxTime);
 			});
 
-			[...advancedTexture.getChildren()[0].children].forEach(c => advancedTexture.removeControl(c));
-
+			// Sort cars in order of race position
 			carOrder.sort((a, b) => {
-				if (a.idxTime > b.idxTime) return -1;
-				if (a.idxTime < b.idxTime) return 1;
 				if (a.time.length === 0 && b.time.length === 0) return 0;
 				if (a.time.length === 0) return 1;
 				if (b.time.length === 0) return -1;
 				if (a.idxTime < 0 && b.idxTime < 0) return 0;
 				if (a.idxTime < 0) return 1;
 				if (b.idxTime < 0) return -1;
-				if (a.time[a.idxTime].time > b.time[b.idxTime].time) return 1;
-				if (a.time[a.idxTime].time < b.time[b.idxTime].time) return -1;
+
+				const aTime = a.time[a.idxTime];
+				const bTime = b.time[b.idxTime];
+
+				if (aTime.lap < bTime.lap) return 1;
+				if (aTime.lap > bTime.lap) return -1;
+				if (aTime.piece < bTime.piece) return 1;
+				if (aTime.piece > bTime.piece) return -1;
+				if (aTime.tick < bTime.tick) return -1;
+				if (aTime.tick > bTime.tick) return 1;
+
 				return 0;
 			}).forEach((car, i) => {
+				// Draw names on screen overlay
 				const txt = new TextBlock();
 				txt.text = car.name;
 				txt.fontSize = 70;
 				txt.color = 'black';
-				// txt.paddingBottom = '5px';
 				txt.paddingLeft = '10px';
 				txt.paddingTop = '5px';
-				// txt.background = 'white';
 				txt.top = i * 90;
 				txt.outlineWidth = 2;
 				txt.outlineColor = 'white';
@@ -1131,11 +1141,11 @@ function buildReplay(raceTrack) {
 	/**/
 
 	let frame = 0;
-	console.log('Sam, numFrames:', numFrames);
-	console.log('Sam, num ticks:', numFrames / df);
 	let k = 0;
 	let n = 0;
-	engine.runRenderLoop(() => {
+
+	// Render at our frame rate
+	aniInterval = setInterval(() => {
 		scene.render();
 
 		if (frame % (df * 10) === 0) {
@@ -1143,6 +1153,8 @@ function buildReplay(raceTrack) {
 		}
 
 		frame++;
+
+		// Change cameras during race
 		if (frame % 500 === 1) {
 			cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
 			scene.activeCamera = cameras[n % cameras.length];
@@ -1151,10 +1163,12 @@ function buildReplay(raceTrack) {
 			scene.activeCamera = cameras[n % cameras.length];
 		}
 
+		// Animation finished, do not continue
 		if (frame >= numFrames) {
-			engine.stopRenderLoop();
+			clearInterval(aniInterval);
 		}
-	});
+	}, 1000 / fps);
+
 	window.addEventListener('resize', () => {
 		engine.resize();
 	});
