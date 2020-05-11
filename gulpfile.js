@@ -525,6 +525,7 @@ gulp.task('transfer:fonts', () => gulp.src([
 gulp.task('transfer:res', () => gulp.src([
 	'./lib/yodasws.js',
 	'./lib/d3.min.js',
+	'./lib/webm-writer-0.2.4.js',
 ])
 	.pipe(gulp.dest(path.join(options.dest, 'res'))),
 );

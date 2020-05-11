@@ -178,6 +178,12 @@ yodasws.page('home').setRoute({
 			raceTrack = RaceTrack.fromJson(json, svg);
 			raceTrack.simulation.stop();
 			buildReplay(raceTrack);
+
+			// Reenable Export Button
+			const btnExport = document.querySelector('form #btnExport');
+			if (btnExport instanceof HTMLElement) {
+				btnExport.removeAttribute('disabled');
+			}
 		})(file);
 		reader.readAsText(file);
 	});
@@ -827,7 +833,11 @@ function closestPoint(pathNode, point) {
  */
 let aniInterval;
 
-function buildReplay(raceTrack) {
+function buildReplay(raceTrack, { fps, doExport, frameRate } = {
+	doExport: false,
+	frameRate: 60,
+	fps: 30,
+}) {
 	console.log('Sam, let\'s do this!');
 	clearInterval(aniInterval);
 	const {
@@ -876,6 +886,7 @@ function buildReplay(raceTrack) {
 		new UniversalCamera('universalCamera1', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene),
 		new UniversalCamera('universalCamera2', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
 		new UniversalCamera('universalCamera3', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
+		new UniversalCamera('universalCamera4', new Vector3(-35, 20, raceTrack.extrema[y][1] + 30), scene),
 	];
 
 	/*
@@ -988,7 +999,6 @@ function buildReplay(raceTrack) {
 
 	let numFrames = 7;
 	const df = 3; // Frames between ticks
-	const fps = 30; // Frames per second to render
 
 	// Build Replay Animation
 	if (cars[0].pos.length > 1) {
@@ -1049,6 +1059,27 @@ function buildReplay(raceTrack) {
 				car.anime = scene.beginAnimation(car.sphere, 0, poKeys[poKeys.length - 1].frame, true);
 			}, 1200);
 		});
+
+		if (!(document.querySelector('form #btnExport') instanceof HTMLElement)) {
+			const btn = document.createElement('button');
+			btn.setAttribute('id', 'btnExport');
+			btn.innerText = 'Export';
+
+			btn.addEventListener('click', () => {
+				btn.setAttribute('disabled', 'disabled');
+				clearInterval(aniInterval);
+				buildReplay(raceTrack, {
+					doExport: true,
+					frameRate: 60,
+					fps: 4,
+				});
+			});
+
+			const form = document.querySelector('form');
+			if (form instanceof Element) {
+				form.appendChild(btn);
+			}
+		}
 	}
 
 	/*
@@ -1141,42 +1172,86 @@ function buildReplay(raceTrack) {
 
 	scene.activeCamera = cameras[0];
 
+	const videoWriter = ((fps, doExport) => {
+		if (doExport) {
+			return new WebMWriter({
+				quality: 0.95,
+				frameRate,
+			});
+		}
+
+		return {
+			addFrame() {},
+			complete() {
+				return Promise.reject();
+			},
+		};
+	})(fps, doExport);
+
 	/*
 	scene.beforeRender = (scene, ...args) => {
 		console.log('Sam, beforeRender:', args);
 	};
-	scene.afterRender = (scene, ...args) => {
-		console.log('Sam, afterRender:', args);
-		// TODO: Add frame to movie for export
-	};
 	/**/
+	scene.afterRender = (scene) => {
+		// TODO: Add frame to movie for export
+		videoWriter.addFrame(canvas);
+	};
 
 	let frame = 0;
 	let k = 0;
 	let n = 0;
 
+	const charlotte = cars.find(car => car.name === 'Charlotte');
+	console.log('Sam, max number of frames:', numFrames);
+
 	// Render at our frame rate
 	aniInterval = setInterval(() => {
 		scene.render();
 
-		if (frame % (df * 10) === 0) {
-			drawOverlay(frame / df);
+		drawOverlay(frame / df);
+
+		// Change cameras during race
+		if (frame % 250 === 0) {
+			// cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
+			cameras[++n % cameras.length].lockedTarget = charlotte.sphere;
+			scene.activeCamera = cameras[n % cameras.length];
+
+			if (n % cameras.length == 0) {
+				k++;
+			}
 		}
 
 		frame++;
-
-		// Change cameras during race
-		if (frame % 500 === 1) {
-			cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
-			scene.activeCamera = cameras[n % cameras.length];
-		} else if (frame % 500 === 251) {
-			cameras[++n % cameras.length].lockedTarget = cars[k++ % cars.length].sphere;
-			scene.activeCamera = cameras[n % cameras.length];
-		}
+		if (frame % 10 === 0) console.log('Sam, frame', frame, ',', (frame / frameRate).toFixed(3), 'seconds');
 
 		// Animation finished, do not continue
-		if (frame >= numFrames) {
-			// clearInterval(aniInterval);
+		if (frame >= numFrames && doExport) {
+			clearInterval(aniInterval);
+			console.log('Sam, done running WebGL animation');
+			// Display resulting video!
+			videoWriter.complete().then((blob) => {
+				const videoUrl = URL.createObjectURL(blob);
+				const main = document.querySelector('main');
+				if (main instanceof Element) {
+					// Link to video
+					const link = document.createElement('a');
+					link.innerText = 'Open  in new window';
+					link.setAttribute('target', '_blank');
+					link.setAttribute('href', videoUrl);
+					main.appendChild(link);
+
+					// Video player
+					const elVideo = document.createElement('video');
+					const elSrc = document.createElement('source');
+					elSrc.setAttribute('type', 'video/webm');
+					elSrc.setAttribute('src', videoUrl);
+					elVideo.appendChild(elSrc);
+					main.appendChild(elVideo);
+				} else {
+					window.open(videoUrl, 'videoPlayer');
+				}
+			});
 		}
 	}, 1000 / fps);
 
