@@ -190,7 +190,7 @@ yodasws.page('home').setRoute({
 });
 
 const gravity = 1 / 10;
-const correctiveStrength = 1 / 9;
+const correctiveStrength = 1 / 15;
 
 function TrackPiece(options) {
 	Object.assign(this, {
@@ -1202,7 +1202,6 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	let k = 0;
 	let n = 0;
 
-	const charlotte = cars.find(car => car.name === 'Charlotte');
 	console.log('Sam, max number of frames:', numFrames);
 
 	// Render at our frame rate
@@ -1213,8 +1212,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 		// Change cameras during race
 		if (frame % 250 === 0) {
-			// cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
-			cameras[++n % cameras.length].lockedTarget = charlotte.sphere;
+			cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
 			scene.activeCamera = cameras[n % cameras.length];
 
 			if (n % cameras.length == 0) {

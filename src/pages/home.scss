@@ -79,6 +79,7 @@
 		display: block;
 		margin: 0 auto;
 		border: 1px inset lightgrey;
+		box-sizing: content-box;
 
 		$ratio: 16 / 9;
 		$height: 1080px;
