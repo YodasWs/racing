@@ -842,6 +842,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	console.log('Sam, let\'s do this!');
 	clearInterval(aniInterval);
 	const {
+		AbstractMesh,
 		Animation,
 		Color3,
 		Color4,
@@ -1004,12 +1005,44 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		}
 	});
 
+	const orderByTickDesc = (a, b) => b.tick - a.tick;
+
+	// To sort cars in order of race position
+	const orderCars = (a, b) => {
+		if (a.time.length === 0 && b.time.length === 0) return 0;
+		if (a.time.length === 0) return 1;
+		if (b.time.length === 0) return -1;
+		if (a.idxTime < 0 && b.idxTime < 0) return 0;
+		if (a.idxTime < 0) return 1;
+		if (b.idxTime < 0) return -1;
+
+		const aTime = a.time[a.idxTime];
+		const bTime = b.time[b.idxTime];
+
+		if (aTime.lap < bTime.lap) return 1;
+		if (aTime.lap > bTime.lap) return -1;
+		if (aTime.piece !== bTime.piece) {
+			// Piece 0 is last piece of the lap
+			if (aTime.piece === 0) return -1;
+			if (bTime.piece === 0) return 1;
+			if (aTime.piece < bTime.piece) return 1;
+			if (aTime.piece > bTime.piece) return -1;
+		}
+		if (aTime.tick < bTime.tick) return -1;
+		if (aTime.tick > bTime.tick) return 1;
+
+		return 0;
+	};
+
 	let numFrames = 7;
 	const df = 3; // Frames between ticks
 
 	// Build Replay Animation
 	if (cars[0].pos.length > 1) {
 		console.log('Sam, cars:', cars);
+
+		const startWaitTime = 1200;
+		let lastTick = 0;
 
 		const TwoPi = Math.PI * 2;
 		cars.forEach((car, i) => {
@@ -1046,6 +1079,8 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 					frame: frame.tick * df,
 					value: new Vector3(0, yr, zr),
 				});
+
+				lastTick = Math.max(lastTick, frame.tick);
 			});
 
 			// Stand at end of animation for 120 seconds
@@ -1055,13 +1090,13 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			}));
 
 			// Find last frame for video
-			numFrames = keys.reduce((n, f) => Math.max(n, f[f.length - 1].frame - 2), numFrames);
+			numFrames = keys.reduce((n, f) => Math.max(n, f[f.length - 1].frame), numFrames);
 
 			// Set function to start animations
 			car.sphere.animations.forEach((a, i) => a.setKeys(keys[i]));
 			setTimeout(() => {
-				car.anime = scene.beginAnimation(car.sphere, 0, keys[0][keys[0].length - 1].frame, true);
-			}, 1200);
+				car.anime = scene.beginAnimation(car.sphere, 0, numFrames, true);
+			}, startWaitTime);
 		});
 
 		// Add Export button to save video replay
@@ -1085,6 +1120,48 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 				form.appendChild(btn);
 			}
 		}
+
+		// Simplified array to keep relative positions during animation
+		const carOrder = cars.slice().map(car => ({
+			radius: car.radius,
+			name: car.name,
+			time: car.time.slice().sort(orderByTickDesc),
+			pos: car.pos.slice().sort(orderByTickDesc),
+		}));
+
+		// Frames for camera targets throughout video
+		const keys = [];
+		for (let tick=0; tick < lastTick; tick++) {
+			// Get front two cars
+			const [
+				first,
+				second,
+			] = carOrder.map((car) => {
+				car.idxTime = car.time.indexOf(car.time.find(time => time.tick <= tick));
+				car.idxPos = car.pos.indexOf(car.pos.find(pos => pos.tick <= tick));
+				return car;
+			}).sort(orderCars);
+			const position = ['x', 'radius', 'y'].map((k) => {
+				if (k === 'radius') return (first[k] + second[k]) / 2;
+				return (first.pos[first.idxPos][k] + second.pos[second.idxPos][k]) / 2
+			});
+			keys.push({
+				frame: tick * df,
+				// Point at midpoint
+				value: new Vector3(...position),
+			});
+		}
+
+		// Build Mesh and Animation for cameras' target
+		const cameraTarget = new AbstractMesh('cameraTarget', scene);
+		cameraTarget.animations = [
+			new Animation('cameraTrack', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE),
+		];
+		cameraTarget.animations.forEach(a => a.setKeys(keys));
+		setTimeout(() => {
+			scene.beginAnimation(cameraTarget, 0, numFrames, true);
+		}, startWaitTime);
+		cameras.forEach(camera => camera.lockedTarget = cameraTarget);
 	}
 
 	/*
@@ -1104,43 +1181,16 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		advancedTexture.useInvalidateRectOptimization = false;
 		advancedTexture.renderScale = 2;
 
-		const orderByTickDesc = (a, b) => b.tick - a.tick;
-
 		// Simplified array to keep relative positions during animation
 		const carOrder = cars.slice().map((car) => {
 			return {
 				name: car.name,
 				time: car.time.slice().sort(orderByTickDesc),
+				pos: car.pos.slice().sort(orderByTickDesc),
 				idxTime: 0,
+				idxPos: 0,
 			};
 		});
-
-		// To sort cars in order of race position
-		const orderCars = (a, b) => {
-			if (a.time.length === 0 && b.time.length === 0) return 0;
-			if (a.time.length === 0) return 1;
-			if (b.time.length === 0) return -1;
-			if (a.idxTime < 0 && b.idxTime < 0) return 0;
-			if (a.idxTime < 0) return 1;
-			if (b.idxTime < 0) return -1;
-
-			const aTime = a.time[a.idxTime];
-			const bTime = b.time[b.idxTime];
-
-			if (aTime.lap < bTime.lap) return 1;
-			if (aTime.lap > bTime.lap) return -1;
-			if (aTime.piece !== bTime.piece) {
-				// Piece 0 is last piece of the lap
-				if (aTime.piece === 0) return -1;
-				if (bTime.piece === 0) return 1;
-				if (aTime.piece < bTime.piece) return 1;
-				if (aTime.piece > bTime.piece) return -1;
-			}
-			if (aTime.tick < bTime.tick) return -1;
-			if (aTime.tick > bTime.tick) return 1;
-
-			return 0;
-		};
 
 		return function(tick) {
 			// Clear overlay for redrawing
@@ -1222,7 +1272,8 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 		// Change cameras during race
 		if (frame % 250 === 0) {
-			cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
+			n++;
+			// cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
 			scene.activeCamera = cameras[n % cameras.length];
 
 			if (n % cameras.length == 0) {
@@ -1233,8 +1284,8 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		frame++;
 		if (frame % 10 === 0 && doExport) console.log('Sam, frame', frame, ',', (frame / frameRate).toFixed(3), 'seconds');
 
-		// Animation finished, do not continue
-		if (frame >= numFrames && doExport) {
+		// Animation finished, do not continue, save video
+		if (frame >= numFrames - 2 && doExport) {
 			clearInterval(aniInterval);
 			console.log('Sam, done running WebGL animation');
 			// Display resulting video!
@@ -1257,7 +1308,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 					elVideo.appendChild(elSrc);
 					main.appendChild(elVideo);
 				} else {
-					window.open(videoUrl, 'videoPlayer');
+					window.open(videoUrl, '_blank');
 				}
 			});
 		}
