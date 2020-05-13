@@ -1016,13 +1016,16 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			let zr = 0;
 			let yr = 0;
 
-			const poKeys = [];
-			const roKeys = [];
-			const moveAnime = new Animation(`moveAnime${car.name}`, 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
-			const spinAnime = new Animation(`spinAnime${car.name}`, 'rotation', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
+			const keys = [];
+			car.sphere.animations = [
+				new Animation(`moveAnime${car.name}`, 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE),
+				new Animation(`spinAnime${car.name}`, 'rotation', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE),
+			];
+			car.sphere.animations.forEach(a => keys.push([]));
+
 			car.pos.forEach((frame) => {
 				// Animate car positions
-				poKeys.push({
+				keys[0].push({
 					frame: frame.tick * df,
 					value: new Vector3(frame.x, car.radius, frame.y),
 				});
@@ -1039,34 +1042,29 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 					yr += d;
 					zr -= v * Math.PI / 16;
 				}
-				roKeys.push({
+				keys[1].push({
 					frame: frame.tick * df,
 					value: new Vector3(0, yr, zr),
 				});
 			});
 
-			poKeys.push({
-				frame: poKeys[poKeys.length - 1].frame + 120,
-				value: poKeys[poKeys.length - 1].value,
-			});
-			roKeys.push({
-				frame: roKeys[roKeys.length - 1].frame + 120,
-				value: roKeys[roKeys.length - 1].value,
-			});
-			numFrames = Math.max(numFrames, poKeys[poKeys.length - 1].frame - 2, roKeys[roKeys.length - 1].frame - 2);
+			// Stand at end of animation for 120 seconds
+			keys.forEach(k => k.push({
+				frame: k[k.length - 1].frame + 120,
+				value: k[k.length - 1].value,
+			}));
 
-			moveAnime.setKeys(poKeys);
-			spinAnime.setKeys(roKeys);
-
-			// Set functions to reset and restart animations
-			car.sphere.animations = [moveAnime, spinAnime];
+			// Find last frame for video
+			numFrames = keys.reduce((n, f) => Math.max(n, f[f.length - 1].frame - 2), numFrames);
 
 			// Set function to start animations
+			car.sphere.animations.forEach((a, i) => a.setKeys(keys[i]));
 			setTimeout(() => {
-				car.anime = scene.beginAnimation(car.sphere, 0, poKeys[poKeys.length - 1].frame, true);
+				car.anime = scene.beginAnimation(car.sphere, 0, keys[0][keys[0].length - 1].frame, true);
 			}, 1200);
 		});
 
+		// Add Export button to save video replay
 		if (!(document.querySelector('form #btnExport') instanceof HTMLElement)) {
 			const btn = document.createElement('button');
 			btn.setAttribute('id', 'btnExport');
@@ -1117,6 +1115,33 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			};
 		});
 
+		// To sort cars in order of race position
+		const orderCars = (a, b) => {
+			if (a.time.length === 0 && b.time.length === 0) return 0;
+			if (a.time.length === 0) return 1;
+			if (b.time.length === 0) return -1;
+			if (a.idxTime < 0 && b.idxTime < 0) return 0;
+			if (a.idxTime < 0) return 1;
+			if (b.idxTime < 0) return -1;
+
+			const aTime = a.time[a.idxTime];
+			const bTime = b.time[b.idxTime];
+
+			if (aTime.lap < bTime.lap) return 1;
+			if (aTime.lap > bTime.lap) return -1;
+			if (aTime.piece !== bTime.piece) {
+				// Piece 0 is last piece of the lap
+				if (aTime.piece === 0) return -1;
+				if (bTime.piece === 0) return 1;
+				if (aTime.piece < bTime.piece) return 1;
+				if (aTime.piece > bTime.piece) return -1;
+			}
+			if (aTime.tick < bTime.tick) return -1;
+			if (aTime.tick > bTime.tick) return 1;
+
+			return 0;
+		};
+
 		return function(tick) {
 			// Clear overlay for redrawing
 			[...advancedTexture.getChildren()[0].children].forEach(c => advancedTexture.removeControl(c));
@@ -1138,31 +1163,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			advancedTexture.addControl(panelPositions);
 
 			// Sort cars in order of race position
-			carOrder.sort((a, b) => {
-				if (a.time.length === 0 && b.time.length === 0) return 0;
-				if (a.time.length === 0) return 1;
-				if (b.time.length === 0) return -1;
-				if (a.idxTime < 0 && b.idxTime < 0) return 0;
-				if (a.idxTime < 0) return 1;
-				if (b.idxTime < 0) return -1;
-
-				const aTime = a.time[a.idxTime];
-				const bTime = b.time[b.idxTime];
-
-				if (aTime.lap < bTime.lap) return 1;
-				if (aTime.lap > bTime.lap) return -1;
-				if (aTime.piece !== bTime.piece) {
-					// Piece 0 is last piece of the lap
-					if (aTime.piece === 0) return -1;
-					if (bTime.piece === 0) return 1;
-					if (aTime.piece < bTime.piece) return 1;
-					if (aTime.piece > bTime.piece) return -1;
-				}
-				if (aTime.tick < bTime.tick) return -1;
-				if (aTime.tick > bTime.tick) return 1;
-
-				return 0;
-			}).forEach((car, i) => {
+			carOrder.sort(orderCars).forEach((car, i) => {
 				// Draw names on screen overlay
 				const txt = new TextBlock();
 				txt.text = car.name;
@@ -1205,7 +1206,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	};
 	/**/
 	scene.afterRender = (scene) => {
-		// TODO: Add frame to movie for export
+		// Add frame to movie for export
 		if (doExport && frame > 5) {
 			videoWriter.addFrame(canvas);
 		}
