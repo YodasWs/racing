@@ -1047,7 +1047,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 				frame: roKeys[roKeys.length - 1].frame + 120,
 				value: roKeys[roKeys.length - 1].value,
 			});
-			numFrames = Math.max(numFrames, poKeys[poKeys.length - 1].frame, roKeys[roKeys.length - 1].frame);
+			numFrames = Math.max(numFrames, poKeys[poKeys.length - 1].frame - 2, roKeys[roKeys.length - 1].frame - 2);
 
 			moveAnime.setKeys(poKeys);
 			spinAnime.setKeys(roKeys);
@@ -1189,6 +1189,10 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		};
 	})(fps, doExport);
 
+	let frame = 0;
+	let k = 0;
+	let n = 0;
+
 	/*
 	scene.beforeRender = (scene, ...args) => {
 		console.log('Sam, beforeRender:', args);
@@ -1196,12 +1200,10 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	/**/
 	scene.afterRender = (scene) => {
 		// TODO: Add frame to movie for export
-		videoWriter.addFrame(canvas);
+		if (doExport && frame > 5) {
+			videoWriter.addFrame(canvas);
+		}
 	};
-
-	let frame = 0;
-	let k = 0;
-	let n = 0;
 
 	console.log('Sam, max number of frames:', numFrames);
 
@@ -1222,7 +1224,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		}
 
 		frame++;
-		if (frame % 10 === 0) console.log('Sam, frame', frame, ',', (frame / frameRate).toFixed(3), 'seconds');
+		if (frame % 10 === 0 && doExport) console.log('Sam, frame', frame, ',', (frame / frameRate).toFixed(3), 'seconds');
 
 		// Animation finished, do not continue
 		if (frame >= numFrames && doExport) {
