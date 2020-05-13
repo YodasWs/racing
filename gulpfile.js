@@ -526,6 +526,7 @@ gulp.task('transfer:res', () => gulp.src([
 	'./lib/yodasws.js',
 	'./lib/d3.min.js',
 	'./lib/webm-writer-0.2.4.js',
+	'./lib/babylon.grassProceduralTexture.min.js',
 ])
 	.pipe(gulp.dest(path.join(options.dest, 'res'))),
 );

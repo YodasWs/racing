@@ -856,6 +856,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		UniversalCamera,
 		Vector3,
 		GUI,
+		GrassProceduralTexture,
 	} = BABYLON;
 
 	// First set the scene
@@ -880,7 +881,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 	// Add Light from Sun
 	const sun = new DirectionalLight('light2', skyMaterial.sunPosition.negate(), scene);
-	sun.diffuse = new Color3(0.8, 0.8, 0.8);
+	sun.diffuse = new Color3(1, 1, 1);
 	sun.intensity = 0.5;
 
 	const cameras = [
@@ -896,36 +897,41 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	});
 	/**/
 
-	const buffer = 10;
+	const buffer = 50;
 	let width = raceTrack.extrema[x][1] - raceTrack.extrema[x][0] + buffer * 2;
 	let height = raceTrack.extrema[y][1] - raceTrack.extrema[y][0] + buffer * 2;
 
-	if (height > width * 4 / 5) {
-		width = height * 5 / 4;
-	} else {
-		height = width * 4 / 5;
-	}
-
 	// Define Surface Materials
-	const ground = MeshBuilder.CreateGround('ground1', { height, width, subdivisions: 2 }, scene);
+	const grass = new StandardMaterial('grass', scene);
+	grass.ambientColor = new Color3(0x7f / 0xff, 0xe5 / 0xff, 0x70 / 0xff);
+	grass.ambientTexture = new GrassProceduralTexture('grassPT', 256, scene);
+
+	const asphalt = new StandardMaterial('asphalt', scene);
+	asphalt.ambientColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff);
+	const rpt = new GrassProceduralTexture('asphaltPT', 256, scene);
+	rpt.grassColors = [
+		new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff),
+		new Color3(0x87 / 0xff, 0x85 / 0xff, 0x8a / 0xff),
+		new Color3(0x97 / 0xff, 0x95 / 0xff, 0x9a / 0xff),
+	];
+	asphalt.ambientTexture = rpt;
+
+	const black = new StandardMaterial('black', scene);
+	black.diffuseColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
+	black.ambientColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
+
+	const siding = new StandardMaterial('siding', scene);
+	siding.diffuseColor = new Color3(0xeb / 0xff, 0x58 / 0xff, 0x63 / 0xff);
+	siding.ambientColor = new Color3(0xeb / 0xff, 0x58 / 0xff, 0x63 / 0xff);
+
+	// Add ground
+	const ground = MeshBuilder.CreateGround('ground1', { height, width, subdivisions: 200 }, scene);
 	ground.position = new Vector3(
 		(raceTrack.extrema[x][1] + raceTrack.extrema[x][0]) / 2,
 		-0.02,
 		(raceTrack.extrema[y][1] + raceTrack.extrema[y][0]) / 2
 	);
-	const grass = new StandardMaterial('grass', scene);
-	grass.diffuseColor = new Color3(0x56 / 0xff, 0x7d / 0xff, 0x46 / 0xff);
-	grass.ambientColor = new Color3(0x56 / 0xff, 0x7d / 0xff, 0x46 / 0xff);
 	ground.material = grass;
-	const asphalt = new StandardMaterial('asphalt', scene);
-	asphalt.diffuseColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff);
-	asphalt.ambientColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff);
-	const black = new StandardMaterial('black', scene);
-	black.diffuseColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
-	black.ambientColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
-	const siding = new StandardMaterial('siding', scene);
-	siding.diffuseColor = new Color3(0xeb / 0xff, 0x58 / 0xff, 0x63 / 0xff);
-	siding.ambientColor = new Color3(0xeb / 0xff, 0x58 / 0xff, 0x63 / 0xff);
 
 	// Build the track
 	const precision = 100;
