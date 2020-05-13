@@ -234,9 +234,10 @@ function TrackPiece(options) {
 					acceleration = [0, 0];
 				}
 
-				// Normalize acceleration and scale by correctiveStrength
+				// Scale acceleration by correctiveStrength
 				const a = Math.hypot(...acceleration);
-				if (a > 0) acceleration = acceleration.map(d => d / a * correctiveStrength);
+				if (a > 1) acceleration = acceleration.map(d => d / a * correctiveStrength);
+				else if (a > 0) acceleration = acceleration.map(d => d * correctiveStrength);
 
 				// Add gradient to acceleration to more strongly force movement in that direction
 				acceleration = acceleration.map((d, i) => d + normalizedGradient[i] * gravity);
