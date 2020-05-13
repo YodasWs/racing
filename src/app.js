@@ -83,40 +83,40 @@ yodasws.page('home').setRoute({
 	/**/
 
 	let raceTrack = new RaceTrack(svg, OvalCourse.map(piece => new TrackPiece(piece)), [
-		new Car('Alice', {
+		new Car('Alice, TX', {
 			color: 'lightgreen',
 			color2: 'orange',
 			rgb: [0x90, 0xee, 0x90],
 		}),
-		new Car('Brooklyn', {
-			color: 'white',
-			color2: 'black',
-			r: 3,
-			strokeWidth: 3,
-			rgb: [0x44, 0x44, 0x44],
-		}),
-		new Car('Charlotte', {
-			color: '#249E57',
-			color2: 'lightgrey',
-			r: 3.5,
-			strokeWidth: 2,
-			rgb: [0x24, 0x9E, 0x57],
-		}),
-		new Car('Dallas', {
+		new Car('Dallas, TX', {
 			color: 'white',
 			color2: 'blue',
 			r: 3,
 			strokeWidth: 3,
 			rgb: [0, 0, 0xff],
 		}),
-		new Car('Edison', {
+		new Car('Charlotte, NC', {
+			color: '#249E57',
+			color2: 'lightgrey',
+			r: 3.5,
+			strokeWidth: 2,
+			rgb: [0x24, 0x9E, 0x57],
+		}),
+		new Car('Brooklyn, NY', {
+			color: 'white',
+			color2: 'black',
+			r: 3,
+			strokeWidth: 3,
+			rgb: [0x44, 0x44, 0x44],
+		}),
+		new Car('Edison, NJ', {
 			color: 'lightblue',
 			color2: 'cornflowerblue',
 			r: 3.5,
 			strokeWidth: 2,
 			rgb: [0xAD, 0xD8, 0xE6],
 		}),
-		new Car('Florence', {
+		new Car('Florence, TN', {
 			color: '#1E3258',
 			color2: '#BF1F2D',
 			r: 3.5,
@@ -886,9 +886,9 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	sun.intensity = 0.5;
 
 	const cameras = [
+		new UniversalCamera('universalCamera3', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
 		new UniversalCamera('universalCamera1', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene),
 		new UniversalCamera('universalCamera2', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
-		new UniversalCamera('universalCamera3', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
 		new UniversalCamera('universalCamera4', new Vector3(-35, 20, raceTrack.extrema[y][1] + 30), scene),
 	];
 
@@ -1036,12 +1036,13 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 	let numFrames = 7;
 	const df = 3; // Frames between ticks
+	const endDelay = 5; // Delay at end of video before restarting, in seconds
+	const startWaitTime = 5; // Delay at start of video before running, in seconds
+	const animationLoopMode = doExport ? Animation.ANIMATIONLOOPMODE_CONSTANT : Animation.ANIMATIONLOOPMODE_CYCLE;
 
 	// Build Replay Animation
 	if (cars[0].pos.length > 1) {
 		console.log('Sam, cars:', cars);
-
-		const startWaitTime = 1200;
 		let lastTick = 0;
 
 		const TwoPi = Math.PI * 2;
@@ -1051,8 +1052,8 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 			const keys = [];
 			car.sphere.animations = [
-				new Animation(`moveAnime${car.name}`, 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE),
-				new Animation(`spinAnime${car.name}`, 'rotation', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE),
+				new Animation(`moveAnime${car.name}`, 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, animationLoopMode),
+				new Animation(`spinAnime${car.name}`, 'rotation', fps, Animation.ANIMATIONTYPE_VECTOR3, animationLoopMode),
 			];
 			car.sphere.animations.forEach(a => keys.push([]));
 
@@ -1083,9 +1084,9 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 				lastTick = Math.max(lastTick, frame.tick);
 			});
 
-			// Stand at end of animation for 120 seconds
+			// Stand at end of animation for a few seconds
 			keys.forEach(k => k.push({
-				frame: k[k.length - 1].frame + 120,
+				frame: k[k.length - 1].frame + endDelay * frameRate,
 				value: k[k.length - 1].value,
 			}));
 
@@ -1096,7 +1097,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			car.sphere.animations.forEach((a, i) => a.setKeys(keys[i]));
 			setTimeout(() => {
 				car.anime = scene.beginAnimation(car.sphere, 0, numFrames, true);
-			}, startWaitTime);
+			}, startWaitTime * 1000);
 		});
 
 		// Add Export button to save video replay
@@ -1152,16 +1153,26 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			});
 		}
 
+		// Stand at end of animation for a few seconds
+		// TODO: instead sync animations together
+		keys.push({
+			frame: keys[keys.length - 1].frame + endDelay * frameRate,
+			value: keys[keys.length - 1].value,
+		});
+
 		// Build Mesh and Animation for cameras' target
 		const cameraTarget = new AbstractMesh('cameraTarget', scene);
 		cameraTarget.animations = [
-			new Animation('cameraTrack', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE),
+			new Animation('cameraTrack', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, animationLoopMode),
 		];
 		cameraTarget.animations.forEach(a => a.setKeys(keys));
 		setTimeout(() => {
 			scene.beginAnimation(cameraTarget, 0, numFrames, true);
-		}, startWaitTime);
+		}, startWaitTime * 1000);
 		cameras.forEach(camera => camera.lockedTarget = cameraTarget);
+	} else {
+		// Point cameras at start line
+		cameras.forEach(camera => camera.setTarget(new Vector3(0, 4.5, 0)));
 	}
 
 	/*
@@ -1205,7 +1216,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			panelPositions.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
 			panelPositions.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 			panelPositions.background = 'white';
-			panelPositions.width = '0.1';
+			panelPositions.width = '0.13';
 			panelPositions.top = '0';
 			panelPositions.left = '0';
 			panelPositions.clipChildren = false;
