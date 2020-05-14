@@ -147,6 +147,7 @@ yodasws.page('home').setRoute({
 					e.focus();
 				}, 500, evt.currentTarget);
 				evt.currentTarget.disabled = true;
+				clearInterval(aniInterval);
 				break;
 			case 'Pause':
 				raceTrack.simulation.stop();
@@ -1008,7 +1009,6 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 	let numFrames = 7;
 	const df = 3; // Frames between ticks
-	const endDelay = 5; // Delay at end of video before restarting, in seconds
 	const startWaitTime = 5; // Delay at start of video before running, in seconds
 	const animationLoopMode = doExport ? Animation.ANIMATIONLOOPMODE_CONSTANT : Animation.ANIMATIONLOOPMODE_CYCLE;
 
@@ -1047,11 +1047,12 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		});
 	}
 
+	const animes = new AnimationGroup('animeRace');
+
 	// Build Replay Animation
 	if (cars[0].pos.length > 1) {
 		console.log('Sam, cars:', cars);
 
-		const animes = new AnimationGroup('animeRace');
 		let lastTick = 0;
 
 		const TwoPi = Math.PI * 2;
@@ -1115,7 +1116,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 				buildReplay(raceTrack, {
 					doExport: true,
 					frameRate: 60,
-					fps: 4,
+					fps: 2,
 				});
 			});
 
@@ -1149,6 +1150,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 				});
 			}
 
+			// Find last frame for video
 			numFrames = keys.reduce((n, f) => Math.max(n, f[f.length - 1].frame), numFrames);
 
 			// Build Mesh and Animation for cameras' target
@@ -1167,7 +1169,6 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		})();
 
 		// Set length of animation
-		numFrames += endDelay * frameRate;
 		animes.normalize(0, numFrames);
 
 		// Start animation after wait
@@ -1249,6 +1250,28 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	let k = 0;
 	let n = 0;
 
+	// Directorial Control over Video!
+	const stages = {
+		flyover: {
+			secondsToSwitchCameras: 6,
+			playTime: 5,
+		},
+		race: {
+			secondsToSwitchCameras: 5,
+		},
+		afterRace: {
+			secondsToSwitchCameras: 2,
+			playTime: 5,
+		},
+	};
+	let currentStage = 'flyover';
+	Object.entries(stages).forEach(([key, stage]) => {
+		stages[key] = {
+			framesToSwitchCameras: stage.secondsToSwitchCameras * frameRate,
+			...stage,
+		};
+	});
+
 	/*
 	scene.beforeRender = (scene, ...args) => {
 		console.log('Sam, beforeRender:', args);
@@ -1256,21 +1279,37 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	/**/
 	scene.afterRender = (scene) => {
 		// Add frame to movie for export
-		if (doExport && frame > 5) {
+		// But skip inital rending frames before everything is added
+		if (doExport && (currentStage !== 'flyover' || frame > 5)) {
 			videoWriter.addFrame(canvas);
 		}
 	};
 
 	console.log('Sam, max number of frames:', numFrames);
 
+	animes.onAnimationGroupPlayObservable.add(() => {
+		currentStage = 'race';
+		frame = 0;
+		k = 0;
+		n = 0;
+	});
+
+	animes.onAnimationGroupEndObservable.add(() => {
+		currentStage = 'afterRace';
+		frame = 0;
+		k = 0;
+		n = 0;
+		numFrames = stages['afterRace'].playTime * frameRate;
+	});
+
 	// Render at our frame rate
 	aniInterval = setInterval(() => {
 		scene.render();
 
-		drawOverlay(frame / df);
+		if (frame === 0 || animes.isPlaying) drawOverlay(frame / df);
 
 		// Change cameras during race
-		if (frame % 250 === 0) {
+		if (frame % stages[currentStage].framesToSwitchCameras === 0) {
 			n++;
 			// cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
 			scene.activeCamera = cameras[n % cameras.length];
@@ -1281,10 +1320,11 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		}
 
 		frame++;
+
 		if (frame % 10 === 0 && doExport) console.log('Sam, frame', frame, ',', (frame / frameRate).toFixed(3), 'seconds');
 
 		// Animation finished, do not continue, save video
-		if (frame >= numFrames && doExport) {
+		if (currentStage === 'afterRace' && frame >= stages['afterRace'].playTime * frameRate && doExport) {
 			clearInterval(aniInterval);
 			console.log('Sam, done running WebGL animation');
 			// Display resulting video!
