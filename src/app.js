@@ -1253,7 +1253,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	// Directorial Control over Video!
 	const stages = {
 		flyover: {
-			secondsToSwitchCameras: 6,
+			secondsToSwitchCameras: 4,
 			playTime: 5,
 		},
 		race: {
@@ -1291,7 +1291,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		currentStage = 'race';
 		frame = 0;
 		k = 0;
-		n = 0;
+		n = 1;
 	});
 
 	animes.onAnimationGroupEndObservable.add(() => {
@@ -1324,32 +1324,38 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		if (frame % 10 === 0 && doExport) console.log('Sam, frame', frame, ',', (frame / frameRate).toFixed(3), 'seconds');
 
 		// Animation finished, do not continue, save video
-		if (currentStage === 'afterRace' && frame >= stages['afterRace'].playTime * frameRate && doExport) {
-			clearInterval(aniInterval);
-			console.log('Sam, done running WebGL animation');
-			// Display resulting video!
-			videoWriter.complete().then((blob) => {
-				const videoUrl = URL.createObjectURL(blob);
-				const main = document.querySelector('main');
-				if (main instanceof Element) {
-					// Link to video
-					const link = document.createElement('a');
-					link.innerText = 'Open  in new window';
-					link.setAttribute('target', '_blank');
-					link.setAttribute('href', videoUrl);
-					main.appendChild(link);
+		if (currentStage === 'afterRace' && frame >= stages['afterRace'].playTime * frameRate) {
+			console.log('Sam, at end of video!');
 
-					// Video player
-					const elVideo = document.createElement('video');
-					const elSrc = document.createElement('source');
-					elSrc.setAttribute('type', 'video/webm');
-					elSrc.setAttribute('src', videoUrl);
-					elVideo.appendChild(elSrc);
-					main.appendChild(elVideo);
-				} else {
-					window.open(videoUrl, '_blank');
-				}
-			});
+			if (doExport) {
+				clearInterval(aniInterval);
+				console.log('Sam, done running WebGL animation');
+				// Display resulting video!
+				videoWriter.complete().then((blob) => {
+					const videoUrl = URL.createObjectURL(blob);
+					const main = document.querySelector('main');
+					if (main instanceof Element) {
+						// Link to video
+						const link = document.createElement('a');
+						link.innerText = 'Open  in new window';
+						link.setAttribute('target', '_blank');
+						link.setAttribute('href', videoUrl);
+						main.appendChild(link);
+
+						// Video player
+						const elVideo = document.createElement('video');
+						const elSrc = document.createElement('source');
+						elSrc.setAttribute('type', 'video/webm');
+						elSrc.setAttribute('src', videoUrl);
+						elVideo.appendChild(elSrc);
+						main.appendChild(elVideo);
+					} else {
+						window.open(videoUrl, '_blank');
+					}
+				});
+			} else {
+				animes.play(false);
+			}
 		}
 	}, 1000 / fps);
 
