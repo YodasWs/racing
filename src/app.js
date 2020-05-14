@@ -844,6 +844,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	const {
 		AbstractMesh,
 		Animation,
+		AnimationGroup,
 		Color3,
 		Color4,
 		DirectionalLight,
@@ -1005,44 +1006,52 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		}
 	});
 
-	const orderByTickDesc = (a, b) => b.tick - a.tick;
-
-	// To sort cars in order of race position
-	const orderCars = (a, b) => {
-		if (a.time.length === 0 && b.time.length === 0) return 0;
-		if (a.time.length === 0) return 1;
-		if (b.time.length === 0) return -1;
-		if (a.idxTime < 0 && b.idxTime < 0) return 0;
-		if (a.idxTime < 0) return 1;
-		if (b.idxTime < 0) return -1;
-
-		const aTime = a.time[a.idxTime];
-		const bTime = b.time[b.idxTime];
-
-		if (aTime.lap < bTime.lap) return 1;
-		if (aTime.lap > bTime.lap) return -1;
-		if (aTime.piece !== bTime.piece) {
-			// Piece 0 is last piece of the lap
-			if (aTime.piece === 0) return -1;
-			if (bTime.piece === 0) return 1;
-			if (aTime.piece < bTime.piece) return 1;
-			if (aTime.piece > bTime.piece) return -1;
-		}
-		if (aTime.tick < bTime.tick) return -1;
-		if (aTime.tick > bTime.tick) return 1;
-
-		return 0;
-	};
-
 	let numFrames = 7;
 	const df = 3; // Frames between ticks
 	const endDelay = 5; // Delay at end of video before restarting, in seconds
 	const startWaitTime = 5; // Delay at start of video before running, in seconds
 	const animationLoopMode = doExport ? Animation.ANIMATIONLOOPMODE_CONSTANT : Animation.ANIMATIONLOOPMODE_CYCLE;
 
+	const orderByTickDesc = (a, b) => b.tick - a.tick;
+
+	// Get cars' positions at tick in position order
+	function getRaceState(tick) {
+		return cars.map((car) => ({
+			name: car.name,
+			radius: car.radius,
+			lenTime: car.time.length,
+			time: car.time.sort(orderByTickDesc).find(time => time.tick <= tick),
+			pos: car.pos.sort(orderByTickDesc).find(pos => pos.tick <= tick),
+		})).sort((a, b) => {
+			if (a.lenTime === 0 && b.lenTime === 0) return 0;
+			if (a.lenTime === 0) return 1;
+			if (b.lenTime === 0) return -1;
+
+			if (typeof a.time === 'undefined' && typeof b.time === 'undefined') return 0;
+			if (typeof a.time === 'undefined') return 1;
+			if (typeof b.time === 'undefined') return -1;
+
+			if (a.time.lap < b.time.lap) return 1;
+			if (a.time.lap > b.time.lap) return -1;
+			if (a.time.piece !== b.time.piece) {
+				// Piece 0 is last piece of the lap
+				if (a.time.piece === 0) return -1;
+				if (b.time.piece === 0) return 1;
+				if (a.time.piece < b.time.piece) return 1;
+				if (a.time.piece > b.time.piece) return -1;
+			}
+			if (a.time.tick < b.time.tick) return -1;
+			if (a.time.tick > b.time.tick) return 1;
+
+			return 0;
+		});
+	}
+
 	// Build Replay Animation
 	if (cars[0].pos.length > 1) {
 		console.log('Sam, cars:', cars);
+
+		const animes = new AnimationGroup('animeRace');
 		let lastTick = 0;
 
 		const TwoPi = Math.PI * 2;
@@ -1051,11 +1060,11 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			let yr = 0;
 
 			const keys = [];
-			car.sphere.animations = [
+			const animations = [
 				new Animation(`moveAnime${car.name}`, 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, animationLoopMode),
 				new Animation(`spinAnime${car.name}`, 'rotation', fps, Animation.ANIMATIONTYPE_VECTOR3, animationLoopMode),
 			];
-			car.sphere.animations.forEach(a => keys.push([]));
+			animations.forEach(a => keys.push([]));
 
 			car.pos.forEach((frame) => {
 				// Animate car positions
@@ -1084,20 +1093,14 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 				lastTick = Math.max(lastTick, frame.tick);
 			});
 
-			// Stand at end of animation for a few seconds
-			keys.forEach(k => k.push({
-				frame: k[k.length - 1].frame + endDelay * frameRate,
-				value: k[k.length - 1].value,
-			}));
-
 			// Find last frame for video
 			numFrames = keys.reduce((n, f) => Math.max(n, f[f.length - 1].frame), numFrames);
 
-			// Set function to start animations
-			car.sphere.animations.forEach((a, i) => a.setKeys(keys[i]));
-			setTimeout(() => {
-				car.anime = scene.beginAnimation(car.sphere, 0, numFrames, true);
-			}, startWaitTime * 1000);
+			// Set animation frame keys and add to group
+			animations.forEach((a, i) => {
+				a.setKeys(keys[i]);
+				animes.addTargetedAnimation(a, car.sphere);
+			});
 		});
 
 		// Add Export button to save video replay
@@ -1122,54 +1125,55 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			}
 		}
 
-		// Simplified array to keep relative positions during animation
-		const carOrder = cars.slice().map(car => ({
-			radius: car.radius,
-			name: car.name,
-			time: car.time.slice().sort(orderByTickDesc),
-			pos: car.pos.slice().sort(orderByTickDesc),
-		}));
+		// Animation for camera targets throughout video
+		(() => {
+			const keys = [];
+			const animations = [
+				new Animation('cameraTrack', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, animationLoopMode),
+			];
+			animations.forEach(a => keys.push([]));
 
-		// Frames for camera targets throughout video
-		const keys = [];
-		for (let tick=0; tick < lastTick; tick++) {
-			// Get front two cars
-			const [
-				first,
-				second,
-			] = carOrder.map((car) => {
-				car.idxTime = car.time.indexOf(car.time.find(time => time.tick <= tick));
-				car.idxPos = car.pos.indexOf(car.pos.find(pos => pos.tick <= tick));
-				return car;
-			}).sort(orderCars);
-			const position = ['x', 'radius', 'y'].map((k) => {
-				if (k === 'radius') return (first[k] + second[k]) / 2;
-				return (first.pos[first.idxPos][k] + second.pos[second.idxPos][k]) / 2
+			for (let tick=0; tick < lastTick; tick++) {
+				// Get front two cars
+				const [
+					first,
+					second,
+				] = getRaceState(tick);
+				keys[0].push({
+					frame: tick * df,
+					// Point at midpoint
+					value: new Vector3(...['x', 'radius', 'y'].map((k) => {
+						if (k === 'radius') return (first[k] + second[k]) / 2;
+						return (first.pos[k] + second.pos[k]) / 2
+					})),
+				});
+			}
+
+			numFrames = keys.reduce((n, f) => Math.max(n, f[f.length - 1].frame), numFrames);
+
+			// Build Mesh and Animation for cameras' target
+			const cameraTarget = new AbstractMesh('cameraTarget', scene);
+			cameras.forEach((camera) => {
+				camera.lockedTarget = cameraTarget;
+				// Start cameras pointing at start of animation
+				cameraTarget.position = keys[0][0].value;
 			});
-			keys.push({
-				frame: tick * df,
-				// Point at midpoint
-				value: new Vector3(...position),
+
+			// Set animation frame keys and add to group
+			animations.forEach((a, i) => {
+				a.setKeys(keys[i]);
+				animes.addTargetedAnimation(a, cameraTarget);
 			});
-		}
+		})();
 
-		// Stand at end of animation for a few seconds
-		// TODO: instead sync animations together
-		keys.push({
-			frame: keys[keys.length - 1].frame + endDelay * frameRate,
-			value: keys[keys.length - 1].value,
-		});
+		// Set length of animation
+		numFrames += endDelay * frameRate;
+		animes.normalize(0, numFrames);
 
-		// Build Mesh and Animation for cameras' target
-		const cameraTarget = new AbstractMesh('cameraTarget', scene);
-		cameraTarget.animations = [
-			new Animation('cameraTrack', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, animationLoopMode),
-		];
-		cameraTarget.animations.forEach(a => a.setKeys(keys));
+		// Start animation after wait
 		setTimeout(() => {
-			scene.beginAnimation(cameraTarget, 0, numFrames, true);
-		}, startWaitTime * 1000);
-		cameras.forEach(camera => camera.lockedTarget = cameraTarget);
+			animes.play(false);
+		}, startWaitTime * 1000 * frameRate / fps);
 	} else {
 		// Point cameras at start line
 		cameras.forEach(camera => camera.setTarget(new Vector3(0, 4.5, 0)));
@@ -1192,25 +1196,9 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		advancedTexture.useInvalidateRectOptimization = false;
 		advancedTexture.renderScale = 2;
 
-		// Simplified array to keep relative positions during animation
-		const carOrder = cars.slice().map((car) => {
-			return {
-				name: car.name,
-				time: car.time.slice().sort(orderByTickDesc),
-				pos: car.pos.slice().sort(orderByTickDesc),
-				idxTime: 0,
-				idxPos: 0,
-			};
-		});
-
 		return function(tick) {
 			// Clear overlay for redrawing
 			[...advancedTexture.getChildren()[0].children].forEach(c => advancedTexture.removeControl(c));
-
-			// Get position of cars' positions at the frame
-			carOrder.forEach((car) => {
-				car.idxTime = car.time.indexOf(car.time.find(time => time.tick <= tick));
-			});
 
 			const panelPositions = new StackPanel();
 			panelPositions.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
@@ -1224,7 +1212,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			advancedTexture.addControl(panelPositions);
 
 			// Sort cars in order of race position
-			carOrder.sort(orderCars).forEach((car, i) => {
+			getRaceState(tick).forEach((car, i) => {
 				// Draw names on screen overlay
 				const txt = new TextBlock();
 				txt.text = car.name;
@@ -1296,7 +1284,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		if (frame % 10 === 0 && doExport) console.log('Sam, frame', frame, ',', (frame / frameRate).toFixed(3), 'seconds');
 
 		// Animation finished, do not continue, save video
-		if (frame >= numFrames - 2 && doExport) {
+		if (frame >= numFrames && doExport) {
 			clearInterval(aniInterval);
 			console.log('Sam, done running WebGL animation');
 			// Display resulting video!
