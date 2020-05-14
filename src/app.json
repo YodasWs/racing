@@ -2,5 +2,8 @@
 	"name": "@yodasws/racing",
 	"components": [],
 	"sections": [],
+	"json": {
+		"cSuzuka": "circuits/suzuka"
+	},
 	"pages": []
 }

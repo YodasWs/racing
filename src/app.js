@@ -82,7 +82,7 @@ yodasws.page('home').setRoute({
 	];
 	/**/
 
-	let raceTrack = new RaceTrack(svg, OvalCourse.map(piece => new TrackPiece(piece)), [
+	let raceTrack = new RaceTrack(svg, json.cSuzuka.map(piece => new TrackPiece(piece)), [
 		new Car('Alice, TX', {
 			color: 'lightgreen',
 			color2: 'orange',
@@ -124,7 +124,7 @@ yodasws.page('home').setRoute({
 			rgb: [0xBF, 0x1F, 0x2D],
 		}),
 	], {
-		laps: 3,
+		laps: 10,
 	});
 
 	raceTrack.simulation.stop();
