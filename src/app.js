@@ -1224,11 +1224,12 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			// Clear overlay for redrawing
 			[...advancedTexture.getChildren()[0].children].forEach(c => advancedTexture.removeControl(c));
 
+			// Add panel to list cars by position
 			const panelPositions = new StackPanel();
 			panelPositions.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
 			panelPositions.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 			panelPositions.background = 'white';
-			panelPositions.width = '0.13';
+			panelPositions.width = '0.14';
 			panelPositions.top = '0';
 			panelPositions.left = '0';
 			panelPositions.clipChildren = false;
@@ -1237,13 +1238,50 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 			// Sort cars in order of race position
 			getRaceState(tick).forEach((car, i) => {
+				if (i === 0 && car.time) {
+					// Update Lap Counter
+					const panelLap = new StackPanel();
+					panelLap.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+					panelLap.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+					panelLap.background = 'white';
+					panelLap.width = '0.07';
+					panelLap.clipChildren = false;
+					panelLap.clipContent = false;
+					advancedTexture.addControl(panelLap);
+
+					const txt = new TextBlock();
+					txt.text = 'GO!';
+					txt.fontSize = 70;
+					txt.height = '110px';
+					txt.color = 'black';
+					txt.paddingLeft = '20px';
+					txt.paddingBottom = '20px';
+					txt.paddingTop = '20px';
+					txt.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+					txt.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+					panelLap.addControl(txt);
+
+					if (car.time.lap > 0) {
+						txt.text = `Lap ${car.time.lap}`;
+					}
+					if (car.time.lap > raceTrack.laps) {
+						txt.text = 'Finish!';
+					}
+				}
+
 				// Draw names on screen overlay
 				const txt = new TextBlock();
-				txt.text = car.name;
+				txt.text = `${i + 1} ${car.name}`;
 				txt.fontSize = 70;
 				txt.color = 'black';
 				txt.paddingLeft = '10px';
 				txt.height = '90px';
+
+				if (i === 0) {
+					txt.paddingTop = '20px';
+					txt.height = '110px';
+				}
+
 				txt.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
 				txt.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
 				panelPositions.addControl(txt);
