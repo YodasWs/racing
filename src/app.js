@@ -366,7 +366,10 @@ RaceTrack.fromJson = (json, svg = null) => {
 	return new RaceTrack(
 		svg,
 		json.gradients.map(piece => new TrackPiece(piece)),
-		json.cars
+		json.cars,
+		{
+			laps: json.laps,
+		}
 	);
 };
 
@@ -459,18 +462,15 @@ Object.defineProperties(RaceTrack.prototype, {
 
 						// Cross the start/end line, next lap
 						if (piece === 0) {
-							car.lapTimes.push(this.time);
+							if (!this.finalStanding.includes(car.name)) {
+								car.lapTimes.push(this.time);
+							}
+
 							if (car.lapTimes.length > this.laps) {
 								// Finished!
 								if (!this.finalStanding.includes(car.name)) {
 									this.finalStanding.push(car.name);
 								}
-								const place = this.finalStanding.indexOf(car.name);
-								if (car.x > this.gradients[0].x + (this.cars.length - place) * 10) {
-									car.fx = car.x;
-									car.fy = car.y;
-								}
-								return;
 							}
 						}
 					}
@@ -484,6 +484,19 @@ Object.defineProperties(RaceTrack.prototype, {
 					car.previousPiece = false;
 				}
 
+				// We finished race, so let's stop
+				if (this.finalStanding.includes(car.name)) {
+					const place = this.finalStanding.indexOf(car.name);
+
+					car.y = Math.min(Math.max(-20, car.y), 20);
+
+					if (car.x > this.gradients[0].x + (this.cars.length - place) * 10) {
+						car.fx = car.x;
+						car.fy = car.y;
+					}
+				}
+
+				// Off track? Stop!
 				if (car.x < this.extrema[x][0] - 10
 					|| car.x > this.extrema[x][1] + 10
 					|| car.y < this.extrema[y][0] - 10
