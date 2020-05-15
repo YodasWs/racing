@@ -1028,37 +1028,47 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	const orderByTickDesc = (a, b) => b.tick - a.tick;
 
 	// Get cars' positions at tick in position order
-	function getRaceState(tick) {
-		return cars.map((car) => ({
+	const getRaceState = ((topCars) => {
+		// First, simplify objects and cache
+		const ourCars = topCars.map((car) => ({
 			name: car.name,
 			radius: car.radius,
 			lenTime: car.time.length,
-			time: car.time.sort(orderByTickDesc).find(time => time.tick <= tick),
-			pos: car.pos.sort(orderByTickDesc).find(pos => pos.tick <= tick),
-		})).sort((a, b) => {
-			if (a.lenTime === 0 && b.lenTime === 0) return 0;
-			if (a.lenTime === 0) return 1;
-			if (b.lenTime === 0) return -1;
+			time: car.time.slice().sort(orderByTickDesc),
+			pos: car.pos.slice().sort(orderByTickDesc),
+		}));
 
-			if (typeof a.time === 'undefined' && typeof b.time === 'undefined') return 0;
-			if (typeof a.time === 'undefined') return 1;
-			if (typeof b.time === 'undefined') return -1;
+		return (tick) => {
+			return ourCars.map((car) => {
+				return Object.assign({}, car, {
+					time: car.time.find(time => time.tick <= tick),
+					pos: car.pos.find(pos => pos.tick <= tick),
+				});
+			}).sort((a, b) => {
+				if (a.lenTime === 0 && b.lenTime === 0) return 0;
+				if (a.lenTime === 0) return 1;
+				if (b.lenTime === 0) return -1;
 
-			if (a.time.lap < b.time.lap) return 1;
-			if (a.time.lap > b.time.lap) return -1;
-			if (a.time.piece !== b.time.piece) {
-				// Piece 0 is last piece of the lap
-				if (a.time.piece === 0) return -1;
-				if (b.time.piece === 0) return 1;
-				if (a.time.piece < b.time.piece) return 1;
-				if (a.time.piece > b.time.piece) return -1;
-			}
-			if (a.time.tick < b.time.tick) return -1;
-			if (a.time.tick > b.time.tick) return 1;
+				if (typeof a.time === 'undefined' && typeof b.time === 'undefined') return 0;
+				if (typeof a.time === 'undefined') return 1;
+				if (typeof b.time === 'undefined') return -1;
 
-			return 0;
-		});
-	}
+				if (a.time.lap < b.time.lap) return 1;
+				if (a.time.lap > b.time.lap) return -1;
+				if (a.time.piece !== b.time.piece) {
+					// Piece 0 is last piece of the lap
+					if (a.time.piece === 0) return -1;
+					if (b.time.piece === 0) return 1;
+					if (a.time.piece < b.time.piece) return 1;
+					if (a.time.piece > b.time.piece) return -1;
+				}
+				if (a.time.tick < b.time.tick) return -1;
+				if (a.time.tick > b.time.tick) return 1;
+
+				return 0;
+			});
+		};
+	})(cars);
 
 	const animes = new AnimationGroup('animeRace');
 
@@ -1279,10 +1289,9 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	};
 	let currentStage = 'flyover';
 	Object.entries(stages).forEach(([key, stage]) => {
-		stages[key] = {
+		stages[key] = Object.assign({
 			framesToSwitchCameras: stage.secondsToSwitchCameras * frameRate,
-			...stage,
-		};
+		}, stage);
 	});
 
 	/*
