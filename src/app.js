@@ -1292,9 +1292,40 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 	scene.activeCamera = cameras[0];
 
+	// Directorial Control over Video!
+	const stages = {
+		flyover: {
+			secondsToSwitchCameras: 4,
+			rotateCamera: true,
+			playTime: 5,
+		},
+		race: {
+			secondsToSwitchCameras: 5,
+			rotateCamera: true,
+			cameras,
+		},
+		afterRace: {
+			secondsToSwitchCameras: 2.5,
+			rotateCamera: true,
+			playTime: 10,
+			cameras,
+		},
+	};
+
 	// TODO: Add track flyover at start of video
 	(() => {
 		if (doExport) return; // Not yet ready for presentation
+
+		// Get position frames
+		const flyoverPoints = raceTrack.gradients.filter(piece => piece.flyoverPoint);
+
+		// TODO: Regardless of flyover, we still need to add countdown animation here
+
+		// No flyover points? Don't bother
+		if (flyoverPoints.length === 0) {
+			scene.activeCamera = cameras.find(cam => cam.id === 'universalCamera1');
+			return;
+		}
 
 		const keys = [];
 		const animations = [
@@ -1302,8 +1333,8 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		];
 		animations.forEach(a => keys.push([]));
 
-		// Get position frames
-		const flyoverPoints = raceTrack.gradients.filter(piece => piece.flyoverPoint);
+		stages.flyover.rotateCamera = false;
+
 		flyoverPoints.push(flyoverPoints.slice(0, 1));
 		let frame = 0;
 		flyoverPoints.forEach((piece, i, a) => {
@@ -1319,12 +1350,6 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 				value,
 			});
 		});
-
-		// No flyover points? Don't bother
-		if (keys[0].length === 0) {
-			scene.activeCamera = cameras.find(cam => cam.id === 'universalCamera1');
-			return;
-		}
 
 		// Set animation frame keys
 		animations.map((a, i) => {
@@ -1370,21 +1395,6 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	let k = 0;
 	let n = 0;
 
-	// Directorial Control over Video!
-	const stages = {
-		flyover: {
-			playTime: 5,
-		},
-		race: {
-			secondsToSwitchCameras: 5,
-			rotateCamera: true,
-		},
-		afterRace: {
-			secondsToSwitchCameras: 2,
-			rotateCamera: true,
-			playTime: 5,
-		},
-	};
 	let currentStage = 'flyover';
 	Object.entries(stages).forEach(([key, stage]) => {
 		if (Number.isFinite(stage.secondsToSwitchCameras)) {
