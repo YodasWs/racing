@@ -863,6 +863,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		Color4,
 		DirectionalLight,
 		Engine,
+		FollowCamera,
 		Mesh,
 		MeshBuilder,
 		Scene,
@@ -1244,7 +1245,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 					panelLap.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
 					panelLap.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
 					panelLap.background = 'white';
-					panelLap.width = '0.07';
+					panelLap.width = '0.1';
 					panelLap.clipChildren = false;
 					panelLap.clipContent = false;
 					advancedTexture.addControl(panelLap);
@@ -1262,7 +1263,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 					panelLap.addControl(txt);
 
 					if (car.time.lap > 0) {
-						txt.text = `Lap ${car.time.lap}`;
+						txt.text = `Lap ${car.time.lap} / ${raceTrack.laps}`;
 					}
 					if (car.time.lap > raceTrack.laps) {
 						txt.text = 'Finish!';
@@ -1291,6 +1292,64 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 	scene.activeCamera = cameras[0];
 
+	// TODO: Add track flyover at start of video
+	(() => {
+		if (doExport) return; // Not yet ready for presentation
+
+		const keys = [];
+		const animations = [
+			new Animation('flyoverTrackP', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE),
+		];
+		animations.forEach(a => keys.push([]));
+
+		// Get position frames
+		const flyoverPoints = raceTrack.gradients.filter(piece => piece.flyoverPoint);
+		flyoverPoints.push(flyoverPoints.slice(0, 1));
+		let frame = 0;
+		flyoverPoints.forEach((piece, i, a) => {
+			const value = new Vector3(piece.x, 0, piece.y);
+
+			if (i > 0) {
+				const last = a[i - 1];
+				frame += Vector3.Distance(value, new Vector3(last.x, 0, last.y)) / 75 * frameRate;
+			}
+
+			keys[0].push({
+				frame,
+				value,
+			});
+		});
+
+		// No flyover points? Don't bother
+		if (keys[0].length === 0) {
+			scene.activeCamera = cameras.find(cam => cam.id === 'universalCamera1');
+			return;
+		}
+
+		// Set animation frame keys
+		animations.map((a, i) => {
+			a.setKeys(keys[i]);
+		});
+
+		const startPosition = new Vector3(-140, 70, 0);
+		const cameraTarget = new AbstractMesh('flyoverTarget', scene);
+		const followCamera = new FollowCamera('flyoverCamera', startPosition, scene, cameraTarget);
+
+		followCamera.radius = startPosition.length();
+		followCamera.heightOffset = 100;
+		followCamera.rotationOffset = -90;
+		followCamera.noRotationConstraint = true;
+		followCamera.maxCameraSpeed = 10;
+		followCamera.acceleration = 0;
+
+		scene.activeCamera = followCamera;
+
+		const animes = new AnimationGroup('animeRace');
+		animes.addTargetedAnimation(animations[0], cameraTarget);
+		animes.normalize(0, frame);
+		animes.play(true);
+	})();
+
 	const videoWriter = ((fps, doExport) => {
 		if (doExport) {
 			return new WebMWriter({
@@ -1314,22 +1373,23 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	// Directorial Control over Video!
 	const stages = {
 		flyover: {
-			secondsToSwitchCameras: 4,
 			playTime: 5,
 		},
 		race: {
 			secondsToSwitchCameras: 5,
+			rotateCamera: true,
 		},
 		afterRace: {
 			secondsToSwitchCameras: 2,
+			rotateCamera: true,
 			playTime: 5,
 		},
 	};
 	let currentStage = 'flyover';
 	Object.entries(stages).forEach(([key, stage]) => {
-		stages[key] = Object.assign({
-			framesToSwitchCameras: stage.secondsToSwitchCameras * frameRate,
-		}, stage);
+		if (Number.isFinite(stage.secondsToSwitchCameras)) {
+			stages[key].framesToSwitchCameras = stage.secondsToSwitchCameras * frameRate;
+		}
 	});
 
 	/*
@@ -1369,7 +1429,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		if (frame === 0 || animes.isPlaying) drawOverlay(frame / df);
 
 		// Change cameras during race
-		if (frame % stages[currentStage].framesToSwitchCameras === 0) {
+		if (stages[currentStage].rotateCamera === true && frame % stages[currentStage].framesToSwitchCameras === 0) {
 			n++;
 			// cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
 			scene.activeCamera = cameras[n % cameras.length];
