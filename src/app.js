@@ -1025,6 +1025,135 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	const df = 3; // Frames between ticks
 	const startWaitTime = 5; // Delay at start of video before running, in seconds
 	const animationLoopMode = doExport ? Animation.ANIMATIONLOOPMODE_CONSTANT : Animation.ANIMATIONLOOPMODE_CYCLE;
+	let currentStage;
+
+	// Directorial Control over Video!
+	const stages = {
+		flyover: {
+			secondsToSwitchCameras: 4,
+			rotateCamera: true,
+			playTime: 4,
+			nextStage: 'countdown',
+			loopAnimes: true,
+			camera: cameras.find(cam => cam.id === 'universalCamera3'),
+			cameras,
+		},
+		countdown: {
+			animes: new AnimationGroup('animeCountdown'),
+			camera: cameras.find(cam => cam.id === 'universalCamera1'),
+			nextStage: 'race',
+			playTime: 3,
+		},
+		race: {
+			animes: new AnimationGroup('animeRace'),
+			secondsToSwitchCameras: 5,
+			rotateCamera: true,
+			cameras,
+			nextStage: 'afterRace',
+		},
+		afterRace: {
+			secondsToSwitchCameras: 2.5,
+			rotateCamera: true,
+			playTime: 10,
+			cameras,
+		},
+	};
+
+	// Programmatic Control over Video!
+	stages.events = new EventTarget();
+
+	// Set up stage with camera and start animations!
+	stages.events.addEventListener('start', function (e) {
+		currentStage = e.detail;
+		const stage = stages[currentStage];
+		if (!stage) throw Error(`Could not find stage ${currentStage}`);
+		if (typeof stage.camera === 'string') scene.activeCamera = cameras.find(cam => cam.id === stage.camera);
+		else if (stage.camera instanceof BABYLON.TargetCamera) scene.activeCamera = stage.camera;
+		if (stage.animes instanceof AnimationGroup) stage.animes.play(!!stage.loopAnimes);
+		if (Number.isFinite(stage.playTime) && stage.playTime > 0) {
+			setTimeout(() => {
+				this.dispatchEvent(new CustomEvent('end', { detail: currentStage }));
+			}, stage.playTime * 1000 * frameRate / fps);
+		}
+	});
+
+	// Clean up stage to prepare for next stage of video
+	stages.events.addEventListener('end', function (e) {
+		const stage = e.detail;
+		if (stages[stage] && stages[stage].nextStage && stages[stages[stage].nextStage]) {
+			this.dispatchEvent(new CustomEvent('start', { detail: stages[stage].nextStage }));
+		}
+	});
+
+	// Add track flyover at start of video
+	(() => {
+		if (doExport) return; // Not yet ready for presentation
+
+		// Get position frames
+		const flyoverPoints = raceTrack.gradients.filter(piece => piece.flyoverPoint);
+
+		// No flyover points? Don't bother
+		if (flyoverPoints.length === 0) {
+			return;
+		}
+
+		const keys = [];
+		const flyoverLoopMode = cars[0].pos.length <= 1 ? Animation.ANIMATIONLOOPMODE_CYCLE : Animation.ANIMATIONLOOPMODE_CONSTANT;
+		const animations = [
+			new Animation('flyoverTrackP', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, flyoverLoopMode),
+			new Animation('flyoverTrackR', 'rotationOffset', fps, Animation.ANIMATIONTYPE_VECTOR3, flyoverLoopMode),
+		];
+		animations.forEach(a => keys.push([]));
+
+		stages.flyover.rotateCamera = false;
+
+		flyoverPoints.push(flyoverPoints.slice(0, 1));
+		let frame = 0;
+		flyoverPoints.forEach((piece, i, a) => {
+			const positionValue = new Vector3(piece.x, 0, piece.y);
+
+			if (i > 0) {
+				const last = a[i - 1];
+				frame += Vector3.Distance(positionValue, new Vector3(last.x, 0, last.y)) / 75 * frameRate;
+			}
+
+			keys[0].push({
+				frame,
+				value: positionValue,
+			});
+
+			// TODO: Point towards next flyoverPoint
+			keys[1].push({
+				frame,
+				value: -90,
+			});
+		});
+
+		// Set animation frame keys
+		animations.map((a, i) => {
+			a.setKeys(keys[i]);
+		});
+
+		const startPosition = new Vector3(-140, 70, 0);
+		const cameraTarget = new AbstractMesh('flyoverTarget', scene);
+
+		const followCamera = new FollowCamera('flyoverCamera', startPosition, scene, cameraTarget);
+		followCamera.radius = startPosition.length();
+		followCamera.heightOffset = 100;
+		followCamera.rotationOffset = -180;
+		followCamera.noRotationConstraint = true;
+		followCamera.maxCameraSpeed = 5;
+		followCamera.acceleration = 0;
+
+		// Set flyover camera and start flyover
+		stages.flyover.camera = followCamera;
+		stages.flyover.animes = new AnimationGroup('animeFlyover');
+		stages.flyover.animes.addTargetedAnimation(animations[0], cameraTarget);
+		stages.flyover.animes.normalize(0, frame);
+		// Don't timeout on flyover
+		stages.flyover.loopAnimes = false;
+		stages.flyover.playTime = false;
+	})();
 
 	const orderByTickDesc = (a, b) => b.tick - a.tick;
 
@@ -1070,8 +1199,6 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			});
 		};
 	})(cars);
-
-	const animes = new AnimationGroup('animeRace');
 
 	// Build Replay Animation
 	if (cars[0].pos.length > 1) {
@@ -1124,7 +1251,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			// Set animation frame keys and add to group
 			animations.forEach((a, i) => {
 				a.setKeys(keys[i]);
-				animes.addTargetedAnimation(a, car.sphere);
+				stages.race.animes.addTargetedAnimation(a, car.sphere);
 			});
 		});
 
@@ -1179,29 +1306,24 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 			// Build Mesh and Animation for cameras' target
 			const cameraTarget = new AbstractMesh('cameraTarget', scene);
-			cameras.forEach((camera) => {
-				camera.lockedTarget = cameraTarget;
-				// Start cameras pointing at start of animation
-				cameraTarget.position = keys[0][0].value;
-			});
+			// Start cameras pointing at start of animation
+			cameraTarget.position = keys[0][0].value;
+			stages.race.cameras.forEach(camera => camera.lockedTarget = cameraTarget);
 
 			// Set animation frame keys and add to group
 			animations.forEach((a, i) => {
 				a.setKeys(keys[i]);
-				animes.addTargetedAnimation(a, cameraTarget);
+				stages.race.animes.addTargetedAnimation(a, cameraTarget);
 			});
 		})();
 
 		// Set length of animation
-		animes.normalize(0, numFrames);
-
-		// Start animation after wait
-		setTimeout(() => {
-			animes.play(false);
-		}, startWaitTime * 1000 * frameRate / fps);
+		stages.race.animes.normalize(0, numFrames);
+		console.log('Sam, maybe setTimeout?');
 	} else {
 		// Point cameras at start line
-		cameras.forEach(camera => camera.setTarget(new Vector3(0, 4.5, 0)));
+		delete stages.flyover.nextStage;
+		stages.flyover.cameras.forEach(camera => camera.setTarget(new Vector3(0, 4.5, 0)));
 	}
 
 	/*
@@ -1292,89 +1414,6 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 	scene.activeCamera = cameras[0];
 
-	// Directorial Control over Video!
-	const stages = {
-		flyover: {
-			secondsToSwitchCameras: 4,
-			rotateCamera: true,
-			playTime: 5,
-		},
-		race: {
-			secondsToSwitchCameras: 5,
-			rotateCamera: true,
-			cameras,
-		},
-		afterRace: {
-			secondsToSwitchCameras: 2.5,
-			rotateCamera: true,
-			playTime: 10,
-			cameras,
-		},
-	};
-
-	// TODO: Add track flyover at start of video
-	(() => {
-		if (doExport) return; // Not yet ready for presentation
-
-		// Get position frames
-		const flyoverPoints = raceTrack.gradients.filter(piece => piece.flyoverPoint);
-
-		// TODO: Regardless of flyover, we still need to add countdown animation here
-
-		// No flyover points? Don't bother
-		if (flyoverPoints.length === 0) {
-			scene.activeCamera = cameras.find(cam => cam.id === 'universalCamera1');
-			return;
-		}
-
-		const keys = [];
-		const animations = [
-			new Animation('flyoverTrackP', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE),
-		];
-		animations.forEach(a => keys.push([]));
-
-		stages.flyover.rotateCamera = false;
-
-		flyoverPoints.push(flyoverPoints.slice(0, 1));
-		let frame = 0;
-		flyoverPoints.forEach((piece, i, a) => {
-			const value = new Vector3(piece.x, 0, piece.y);
-
-			if (i > 0) {
-				const last = a[i - 1];
-				frame += Vector3.Distance(value, new Vector3(last.x, 0, last.y)) / 75 * frameRate;
-			}
-
-			keys[0].push({
-				frame,
-				value,
-			});
-		});
-
-		// Set animation frame keys
-		animations.map((a, i) => {
-			a.setKeys(keys[i]);
-		});
-
-		const startPosition = new Vector3(-140, 70, 0);
-		const cameraTarget = new AbstractMesh('flyoverTarget', scene);
-		const followCamera = new FollowCamera('flyoverCamera', startPosition, scene, cameraTarget);
-
-		followCamera.radius = startPosition.length();
-		followCamera.heightOffset = 100;
-		followCamera.rotationOffset = -90;
-		followCamera.noRotationConstraint = true;
-		followCamera.maxCameraSpeed = 10;
-		followCamera.acceleration = 0;
-
-		scene.activeCamera = followCamera;
-
-		const animes = new AnimationGroup('animeRace');
-		animes.addTargetedAnimation(animations[0], cameraTarget);
-		animes.normalize(0, frame);
-		animes.play(true);
-	})();
-
 	const videoWriter = ((fps, doExport) => {
 		if (doExport) {
 			return new WebMWriter({
@@ -1393,9 +1432,8 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 	let frame = 0;
 	let k = 0;
-	let n = 0;
+	let n = 1;
 
-	let currentStage = 'flyover';
 	Object.entries(stages).forEach(([key, stage]) => {
 		if (Number.isFinite(stage.secondsToSwitchCameras)) {
 			stages[key].framesToSwitchCameras = stage.secondsToSwitchCameras * frameRate;
@@ -1417,26 +1455,37 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 	console.log('Sam, max number of frames:', numFrames);
 
-	animes.onAnimationGroupPlayObservable.add(() => {
+	// Have Babylon Observables trigger JavaScript events
+	Object.entries(stages).forEach(([detail, stage]) => {
+		if (!(stage.animes instanceof AnimationGroup)) return;
+		stage.animes.onAnimationGroupEndObservable.add(() => {
+			console.log('Sam, end', detail);
+			stages.events.dispatchEvent(new CustomEvent('end', { detail }));
+		});
+	});
+
+	stages.race.animes.onAnimationGroupPlayObservable.add(() => {
 		currentStage = 'race';
 		frame = 0;
 		k = 0;
-		n = 1;
+		n = 0;
 	});
 
-	animes.onAnimationGroupEndObservable.add(() => {
+	stages.race.animes.onAnimationGroupEndObservable.add(() => {
 		currentStage = 'afterRace';
 		frame = 0;
 		k = 0;
 		n = 0;
-		numFrames = stages['afterRace'].playTime * frameRate;
+		numFrames = stages.afterRace.playTime * frameRate;
+		stages.events.dispatchEvent(new CustomEvent('end', { detail: 'race' }));
 	});
 
 	// Render at our frame rate
+	// TODO: Better implement generic stage object from stages
 	aniInterval = setInterval(() => {
 		scene.render();
 
-		if (frame === 0 || animes.isPlaying) drawOverlay(frame / df);
+		if (frame === 0 || stages.race.animes.isPlaying) drawOverlay(frame / df);
 
 		// Change cameras during race
 		if (stages[currentStage].rotateCamera === true && frame % stages[currentStage].framesToSwitchCameras === 0) {
@@ -1454,7 +1503,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		if (frame % 10 === 0 && doExport) console.log('Sam, frame', frame, ',', (frame / frameRate).toFixed(3), 'seconds');
 
 		// Animation finished, do not continue, save video
-		if (currentStage === 'afterRace' && frame >= stages['afterRace'].playTime * frameRate) {
+		if (currentStage === 'afterRace' && frame >= stages.afterRace.playTime * frameRate) {
 			console.log('Sam, at end of video!');
 
 			if (doExport) {
@@ -1484,7 +1533,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 					}
 				});
 			} else {
-				animes.play(false);
+				stages.race.animes.play(false);
 			}
 		}
 	}, 1000 / fps);
@@ -1493,6 +1542,11 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	window.addEventListener('resize', () => {
 		engine.resize();
 	});
+
+	// Finally, start animations!
+	if (!currentStage) {
+		stages.events.dispatchEvent(new CustomEvent('start', { detail: 'flyover' }));
+	}
 }
 
 function forceRailingBounce(rails) {
