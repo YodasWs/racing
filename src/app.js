@@ -1042,7 +1042,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			animes: new AnimationGroup('animeCountdown'),
 			camera: cameras.find(cam => cam.id === 'universalCamera1'),
 			nextStage: 'race',
-			playTime: 3,
+			playTime: 4,
 		},
 		race: {
 			animes: new AnimationGroup('animeRace'),
@@ -1069,6 +1069,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		if (!stage) throw Error(`Could not find stage ${currentStage}`);
 		if (typeof stage.camera === 'string') scene.activeCamera = cameras.find(cam => cam.id === stage.camera);
 		else if (stage.camera instanceof BABYLON.TargetCamera) scene.activeCamera = stage.camera;
+		if (typeof stage.onStartStage === 'function') stage.onStartStage();
 		if (stage.animes instanceof AnimationGroup) stage.animes.play(!!stage.loopAnimes);
 		if (Number.isFinite(stage.playTime) && stage.playTime > 0) {
 			setTimeout(() => {
@@ -1080,13 +1081,14 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	// Clean up stage to prepare for next stage of video
 	stages.events.addEventListener('end', function (e) {
 		const stage = e.detail;
+		if (typeof stage.onEndStage === 'function') stage.onEndStage();
 		if (stages[stage] && stages[stage].nextStage && stages[stages[stage].nextStage]) {
 			this.dispatchEvent(new CustomEvent('start', { detail: stages[stage].nextStage }));
 		}
 	});
 
 	// Add track flyover at start of video
-	(() => {
+	((stage) => {
 		if (doExport) return; // Not yet ready for presentation
 
 		// Get position frames
@@ -1105,7 +1107,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		];
 		animations.forEach(a => keys.push([]));
 
-		stages.flyover.rotateCamera = false;
+		stage.rotateCamera = false;
 
 		flyoverPoints.push(flyoverPoints.slice(0, 1));
 		let frame = 0;
@@ -1146,14 +1148,64 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		followCamera.acceleration = 0;
 
 		// Set flyover camera and start flyover
-		stages.flyover.camera = followCamera;
-		stages.flyover.animes = new AnimationGroup('animeFlyover');
-		stages.flyover.animes.addTargetedAnimation(animations[0], cameraTarget);
-		stages.flyover.animes.normalize(0, frame);
+		stage.camera = followCamera;
+		stage.animes = new AnimationGroup('animeFlyover');
+		stage.animes.addTargetedAnimation(animations[0], cameraTarget);
+		stage.animes.normalize(0, frame);
 		// Don't timeout on flyover
-		stages.flyover.loopAnimes = false;
-		stages.flyover.playTime = false;
-	})();
+		stage.loopAnimes = false;
+		stage.playTime = false;
+	})(stages.flyover);
+
+	// Display countdown
+	((stage) => {
+		let i = 3;
+		const {
+			AdvancedDynamicTexture,
+			Control,
+			Rectangle,
+			StackPanel,
+			TextBlock,
+		} = GUI;
+
+		const advancedTexture = new AdvancedDynamicTexture.CreateFullscreenUI('myUI');
+		advancedTexture.useInvalidateRectOptimization = false;
+		advancedTexture.renderScale = 2;
+
+		// Panel to show countdown
+		const panelCountdown = new Rectangle();
+		panelCountdown.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+		panelCountdown.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+		panelCountdown.background = 'white';
+		panelCountdown.height = '0.1';
+		panelCountdown.width = '0.25';
+		panelCountdown.paddingLeft = '20%';
+		panelCountdown.clipChildren = false;
+		panelCountdown.clipContent = false;
+		panelCountdown.cornerRadius = 100;
+
+		const txt = new TextBlock();
+		txt.fontSize = 100;
+		txt.fontWeight = 'bold';
+		txt.color = 'black';
+		txt.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+		txt.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+		txt.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+		txt.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+		panelCountdown.addControl(txt);
+
+		stage.onStartStage = () => {
+			const countdown = setInterval(() => {
+				txt.text = i.toString();
+				advancedTexture.addControl(panelCountdown);
+
+				if (--i < 0) {
+					clearInterval(countdown);
+					advancedTexture.removeControl(panelCountdown);
+				}
+			}, 1000 * frameRate / fps);
+		};
+	})(stages.countdown);
 
 	const orderByTickDesc = (a, b) => b.tick - a.tick;
 
@@ -1343,71 +1395,72 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		advancedTexture.useInvalidateRectOptimization = false;
 		advancedTexture.renderScale = 2;
 
+		// Add panel to list cars by position
+		const panelPositions = new StackPanel();
+		panelPositions.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+		panelPositions.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+		panelPositions.background = 'white';
+		panelPositions.width = '0.14';
+		panelPositions.top = '0';
+		panelPositions.left = '0';
+		panelPositions.clipChildren = false;
+		panelPositions.clipContent = false;
+		advancedTexture.addControl(panelPositions);
+
+		// Add panel for lap counter
+		const panelLap = new StackPanel();
+		panelLap.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+		panelLap.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+		panelLap.background = 'white';
+		panelLap.width = '0.1';
+		panelLap.clipChildren = false;
+		panelLap.clipContent = false;
+
+		const txtLapCount = new TextBlock();
+		txtLapCount.fontSize = 70;
+		txtLapCount.height = '110px';
+		txtLapCount.color = 'black';
+		txtLapCount.paddingLeft = '20px';
+		txtLapCount.paddingBottom = '20px';
+		txtLapCount.paddingTop = '20px';
+		txtLapCount.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+		txtLapCount.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+		panelLap.addControl(txtLapCount);
+
+		const txtCarsPositions = new Array(cars.length).fill(0).map((b, i) => {
+			// Draw names on screen overlay
+			const txt = new TextBlock();
+			txt.fontSize = 70;
+			txt.color = 'black';
+			txt.paddingLeft = '10px';
+			txt.height = '90px';
+			if (i === 0) {
+				txt.paddingTop = '20px';
+				txt.height = '110px';
+			}
+			txt.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+			txt.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+			panelPositions.addControl(txt);
+			return txt;
+		});
+
 		return function(tick) {
-			// Clear overlay for redrawing
-			[...advancedTexture.getChildren()[0].children].forEach(c => advancedTexture.removeControl(c));
-
-			// Add panel to list cars by position
-			const panelPositions = new StackPanel();
-			panelPositions.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-			panelPositions.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-			panelPositions.background = 'white';
-			panelPositions.width = '0.14';
-			panelPositions.top = '0';
-			panelPositions.left = '0';
-			panelPositions.clipChildren = false;
-			panelPositions.clipContent = false;
-			advancedTexture.addControl(panelPositions);
-
 			// Sort cars in order of race position
 			getRaceState(tick).forEach((car, i) => {
 				if (i === 0 && car.time) {
 					// Update Lap Counter
-					const panelLap = new StackPanel();
-					panelLap.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-					panelLap.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-					panelLap.background = 'white';
-					panelLap.width = '0.1';
-					panelLap.clipChildren = false;
-					panelLap.clipContent = false;
 					advancedTexture.addControl(panelLap);
-
-					const txt = new TextBlock();
-					txt.text = 'GO!';
-					txt.fontSize = 70;
-					txt.height = '110px';
-					txt.color = 'black';
-					txt.paddingLeft = '20px';
-					txt.paddingBottom = '20px';
-					txt.paddingTop = '20px';
-					txt.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-					txt.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-					panelLap.addControl(txt);
-
-					if (car.time.lap > 0) {
-						txt.text = `Lap ${car.time.lap} / ${raceTrack.laps}`;
-					}
 					if (car.time.lap > raceTrack.laps) {
-						txt.text = 'Finish!';
+						txtLapCount.text = 'Finish!';
+					} else if (car.time.lap > 0) {
+						txtLapCount.text = `Lap ${car.time.lap} / ${raceTrack.laps}`;
+					} else {
+						txtLapCount.text = 'GO!';
 					}
 				}
 
 				// Draw names on screen overlay
-				const txt = new TextBlock();
-				txt.text = `${i + 1} ${car.name}`;
-				txt.fontSize = 70;
-				txt.color = 'black';
-				txt.paddingLeft = '10px';
-				txt.height = '90px';
-
-				if (i === 0) {
-					txt.paddingTop = '20px';
-					txt.height = '110px';
-				}
-
-				txt.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-				txt.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-				panelPositions.addControl(txt);
+				txtCarsPositions[i].text = `${i + 1} ${car.name}`;
 			});
 		};
 	})(GUI);
@@ -1458,6 +1511,9 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	// Have Babylon Observables trigger JavaScript events
 	Object.entries(stages).forEach(([detail, stage]) => {
 		if (!(stage.animes instanceof AnimationGroup)) return;
+		if (typeof stage.onStartAnimation === 'function') {
+			stage.animes.onAnimationGroupPlayObservable.add(stage.onStartAnimation);
+		}
 		stage.animes.onAnimationGroupEndObservable.add(() => {
 			console.log('Sam, end', detail);
 			stages.events.dispatchEvent(new CustomEvent('end', { detail }));
