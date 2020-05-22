@@ -2,6 +2,7 @@
 const SVG = 'http://www.w3.org/2000/svg';
 const x = 0;
 const y = 1;
+const z = 2;
 const radius = 4.5;
 const strokeWidth = 1;
 
@@ -874,6 +875,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		Vector3,
 		GUI,
 		GrassProceduralTexture,
+		DynamicTerrain,
 	} = BABYLON;
 
 	// First set the scene
@@ -942,6 +944,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	siding.ambientColor = new Color3(0xeb / 0xff, 0x58 / 0xff, 0x63 / 0xff);
 
 	// Add ground
+	/*
 	const ground = MeshBuilder.CreateGround('ground1', { height, width, subdivisions: 200 }, scene);
 	ground.position = new Vector3(
 		(raceTrack.extrema[x][1] + raceTrack.extrema[x][0]) / 2,
@@ -949,6 +952,34 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		(raceTrack.extrema[y][1] + raceTrack.extrema[y][0]) / 2
 	);
 	ground.material = grass;
+	/**/
+
+	const mapSubX = 200;
+	const mapSubZ = 200;
+	const mapData = new Float32Array(mapSubX * mapSubZ * 3);
+	const terrainSub = 60;
+	for (let l = 0; l < mapSubZ; l++) {
+		for (let w = 0; w < mapSubX; w++) {
+			const point = [
+				(w - mapSubX / 2) * 5,
+				-0.02,
+				(l - mapSubZ / 2) * 5,
+			];
+			mapData[3 * (l * mapSubX + w) + x] = point[x];
+			mapData[3 * (l * mapSubX + w) + y] = point[y];
+			mapData[3 * (l * mapSubX + w) + z] = point[z];
+		}
+	}
+
+	const dtGround = new DynamicTerrain('dtGround', {
+		mapData,
+		mapSubX,
+		mapSubZ,
+		terrainSub,
+	}, scene);
+	dtGround.updateCameraLOD = camera => Math.abs((camera.globalPosition.y / 10)|0);
+	dtGround.mesh.material = grass;
+	dtGround.wireframe = true;
 
 	// Build the track
 	const precision = 100;
@@ -1081,9 +1112,11 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	// Clean up stage to prepare for next stage of video
 	stages.events.addEventListener('end', function (e) {
 		const stage = e.detail;
-		if (typeof stage.onEndStage === 'function') stage.onEndStage();
-		if (stages[stage] && stages[stage].nextStage && stages[stages[stage].nextStage]) {
-			this.dispatchEvent(new CustomEvent('start', { detail: stages[stage].nextStage }));
+		if (stages[stage]) {
+			if (typeof stages[stage].onEndStage === 'function') stages[stage].onEndStage();
+			if (stages[stage].nextStage && stages[stages[stage].nextStage]) {
+				this.dispatchEvent(new CustomEvent('start', { detail: stages[stage].nextStage }));
+			}
 		}
 	});
 
@@ -1159,7 +1192,6 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 	// Display countdown
 	((stage) => {
-		let i = 3;
 		const {
 			AdvancedDynamicTexture,
 			Control,
@@ -1194,16 +1226,23 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		txt.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
 		panelCountdown.addControl(txt);
 
+		let i = 3;
+		let countdown;
 		stage.onStartStage = () => {
-			const countdown = setInterval(() => {
-				txt.text = i.toString();
-				advancedTexture.addControl(panelCountdown);
-
-				if (--i < 0) {
-					clearInterval(countdown);
-					advancedTexture.removeControl(panelCountdown);
-				}
+			countdown = setInterval(() => {
+				if (i === 3) advancedTexture.addControl(panelCountdown);
+				if (i > 0) txt.text = i.toString();
+				else txt.text = 'Go!';
+				i--;
 			}, 1000 * frameRate / fps);
+		};
+
+		stage.onEndStage = () => {
+			console.log('Sam, onEndStage!');
+			if (countdown) clearInterval(countdown);
+			setTimeout(() => {
+				advancedTexture.removeControl(panelCountdown);
+			}, 200);
 		};
 	})(stages.countdown);
 
