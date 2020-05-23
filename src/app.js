@@ -83,6 +83,13 @@ yodasws.page('home').setRoute({
 	];
 	/**/
 
+	json.cSuzuka.forEach((piece) => {
+		piece.delta = piece.delta.map(a => a * 2);
+		if (piece.rail instanceof Array) {
+			piece.rail = piece.rail.map(a => a * 1.5);
+		}
+	});
+
 	let raceTrack = new RaceTrack(svg, json.cSuzuka.map(piece => new TrackPiece(piece)), [
 		new Car('Alice, TX', {
 			color: 'lightgreen',
@@ -885,6 +892,20 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	scene.useRightHandedSystem = true;
 	scene.ambientColor = new Color3(0.8, 0.8, 0.8);
 
+	const plane = {
+		cross: Math.max(
+			Math.abs(raceTrack.extrema[x][1] - raceTrack.extrema[x][0]),
+			Math.abs(raceTrack.extrema[y][1] - raceTrack.extrema[y][0])
+		),
+		height: raceTrack.extrema[y][1] - raceTrack.extrema[y][0],
+		width: raceTrack.extrema[x][1] - raceTrack.extrema[x][0],
+		midpoint: new Vector3(
+			(raceTrack.extrema[x][0] + raceTrack.extrema[x][1]) / 2,
+			0,
+			(raceTrack.extrema[y][0] + raceTrack.extrema[y][1]) / 2
+		),
+	};
+
 	// Build the sky
 	const skyMaterial = new SkyMaterial('sky', scene);
 	skyMaterial.backFaceCulling = false;
@@ -895,8 +916,15 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	skyMaterial.rayleigh = 3;
 	skyMaterial.cameraOffset.y = 200;
 
-	const skybox = Mesh.CreateBox('skyBox', 1000.0, scene);
+	// const skybox = Mesh.CreateBox(
+	const skybox = Mesh.CreateSphere(
+		'skyBox',
+		5,
+		plane.cross * 2,
+		scene
+	);
 	skybox.material = skyMaterial;
+	skybox.position = plane.midpoint;
 
 	// Add Light from Sun
 	const sun = new DirectionalLight('light2', skyMaterial.sunPosition.negate(), scene);
@@ -904,10 +932,14 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	sun.intensity = 0.5;
 
 	const cameras = [
-		new UniversalCamera('universalCamera3', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
+		// new UniversalCamera('universalCamera3', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
 		new UniversalCamera('universalCamera1', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene),
-		new UniversalCamera('universalCamera2', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
-		new UniversalCamera('universalCamera4', new Vector3(-35, 20, raceTrack.extrema[y][1] + 30), scene),
+		// new UniversalCamera('universalCamera2', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
+		// new UniversalCamera('universalCamera4', new Vector3(-35, 20, raceTrack.extrema[y][1] + 30), scene),
+		// new UniversalCamera('universalCameraA', new Vector3(raceTrack.extrema[x][0] + 200, 20, raceTrack.extrema[y][0] - 10), scene),
+		// new UniversalCamera('universalCameraB', new Vector3(raceTrack.extrema[x][0] + 150, 20, raceTrack.extrema[y][0] - 10), scene),
+		// new UniversalCamera('universalCameraC', new Vector3(raceTrack.extrema[x][0] +   0, 20, raceTrack.extrema[y][0] - 10), scene),
+		// new UniversalCamera('universalCameraD', new Vector3(raceTrack.extrema[x][0] -  50, 20, raceTrack.extrema[y][0] - 10), scene),
 	];
 
 	/*
@@ -915,10 +947,6 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		cam.attachControl(canvas, false);
 	});
 	/**/
-
-	const buffer = 50;
-	let width = raceTrack.extrema[x][1] - raceTrack.extrema[x][0] + buffer * 2;
-	let height = raceTrack.extrema[y][1] - raceTrack.extrema[y][0] + buffer * 2;
 
 	// Define Surface Materials
 	const grass = new StandardMaterial('grass', scene);
@@ -944,26 +972,18 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	siding.ambientColor = new Color3(0xeb / 0xff, 0x58 / 0xff, 0x63 / 0xff);
 
 	// Add ground
-	/*
-	const ground = MeshBuilder.CreateGround('ground1', { height, width, subdivisions: 200 }, scene);
-	ground.position = new Vector3(
-		(raceTrack.extrema[x][1] + raceTrack.extrema[x][0]) / 2,
-		-0.02,
-		(raceTrack.extrema[y][1] + raceTrack.extrema[y][0]) / 2
-	);
-	ground.material = grass;
-	/**/
-
+	const vertexSpacing = 5;
 	const mapSubX = 200;
 	const mapSubZ = 200;
-	const mapData = new Float32Array(mapSubX * mapSubZ * 3);
 	const terrainSub = 60;
+
+	const mapData = new Float32Array(mapSubX * mapSubZ * 3);
 	for (let l = 0; l < mapSubZ; l++) {
 		for (let w = 0; w < mapSubX; w++) {
 			const point = [
-				(w - mapSubX / 2) * 5,
-				-0.02,
-				(l - mapSubZ / 2) * 5,
+				(w - mapSubX / 2) * vertexSpacing,
+				-0.05,
+				(l - mapSubZ / 2) * vertexSpacing,
 			];
 			mapData[3 * (l * mapSubX + w) + x] = point[x];
 			mapData[3 * (l * mapSubX + w) + y] = point[y];
@@ -979,7 +999,36 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	}, scene);
 	dtGround.updateCameraLOD = camera => Math.abs((camera.globalPosition.y / 10)|0);
 	dtGround.mesh.material = grass;
-	dtGround.wireframe = true;
+	// dtGround.isAlwaysVisible = true;
+
+	(() => {
+		const keys = [];
+		const a = new Animation('spinningCamera', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
+
+		const dist = plane.cross * (0.5 + 1 / 6);
+
+		for (let i=0; i<360; i++) {
+			keys.push({
+				frame: i,
+				value: new Vector3(
+					Math.cos(i * Math.PI / 180) * dist + plane.midpoint.x,
+					100,
+					Math.sin(i * Math.PI / 180) * dist + plane.midpoint.z
+				),
+			});
+		}
+		a.setKeys(keys);
+
+		const animes = new AnimationGroup('animeFlyover');
+		animes.normalize(0, keys[keys.length - 1].frame);
+
+		cameras.forEach((c) => {
+			c.lockedTarget = plane.midpoint;
+			animes.addTargetedAnimation(a, c);
+		});
+
+		animes.play(true);
+	})();
 
 	// Build the track
 	const precision = 100;
@@ -1123,6 +1172,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	// Add track flyover at start of video
 	((stage) => {
 		if (doExport) return; // Not yet ready for presentation
+		return;
 
 		// Get position frames
 		const flyoverPoints = raceTrack.gradients.filter(piece => piece.flyoverPoint);
@@ -1533,8 +1583,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	});
 
 	/*
-	scene.beforeRender = (scene, ...args) => {
-		console.log('Sam, beforeRender:', args);
+	scene.beforeRender = (scene) => {
 	};
 	/**/
 	scene.afterRender = (scene) => {
