@@ -12,6 +12,16 @@ yodasws.page('home').setRoute({
 }).on('load', () => {
 	const svg = document.querySelector('svg#scene');
 
+	document.getElementById('btnTick').remove();
+
+	const btn = document.createElement('button');
+	btn.innerText = 'Flag!';
+	btn.addEventListener('click', (e) => {
+		e.preventDefault();
+		console.error('Sam, flag!');
+	});
+	document.querySelector('form').appendChild(btn);
+
 	const OvalCourse = [
 		{
 			gradient: [1, 0],
@@ -407,7 +417,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				car.vx = 0.9;
 				car.vy = 0;
 				car.trackAhead = this.gradients.slice();
-				car.pos = [];
+				car.posn = [];
 			});
 			this.moveCars();
 			this.listCars();
@@ -516,7 +526,7 @@ Object.defineProperties(RaceTrack.prototype, {
 
 			// Record positional data for future replay
 			this.cars.forEach((car) => {
-				car.pos.push({
+				car.posn.push({
 					tick: this.tick,
 					time: this.time,
 					vx: car.vx,
@@ -768,7 +778,7 @@ function Car(name, options = {}) {
 		previousPiece: false,
 		lapTimes: [],
 		time: [],
-		pos: [],
+		posn: [],
 	});
 
 
@@ -1085,12 +1095,12 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 	// Place cars in starting positions
 	cars.forEach((car) => {
-		const pos = car.pos[0];
+		const posn = car.posn[0];
 		car.sphere = MeshBuilder.CreateSphere('sphere', {
 			segments: 16,
 			diameter: car.radius * 2,
 		}, scene);
-		car.sphere.position = new Vector3(pos.x, car.radius, pos.y);
+		car.sphere.position = new Vector3(posn.x, car.radius, posn.y);
 
 		if (car.rgb instanceof Array) {
 			const material = new StandardMaterial(`${car.name}Material`, scene);
@@ -1183,7 +1193,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		}
 
 		const keys = [];
-		const flyoverLoopMode = cars[0].pos.length <= 1 ? Animation.ANIMATIONLOOPMODE_CYCLE : Animation.ANIMATIONLOOPMODE_CONSTANT;
+		const flyoverLoopMode = cars[0].posn.length <= 1 ? Animation.ANIMATIONLOOPMODE_CYCLE : Animation.ANIMATIONLOOPMODE_CONSTANT;
 		const animations = [
 			new Animation('flyoverTrackP', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, flyoverLoopMode),
 			new Animation('flyoverTrackR', 'rotationOffset', fps, Animation.ANIMATIONTYPE_VECTOR3, flyoverLoopMode),
@@ -1300,49 +1310,65 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 	// Get cars' positions at tick in position order
 	const getRaceState = ((topCars) => {
-		// First, simplify objects and cache
-		const ourCars = topCars.map((car) => ({
-			name: car.name,
-			radius: car.radius,
-			lenTime: car.time.length,
-			time: car.time.slice().sort(orderByTickDesc),
-			pos: car.pos.slice().sort(orderByTickDesc),
-		}));
+		let ourCars = [];
 
-		return (tick) => {
-			return ourCars.map((car) => {
-				return Object.assign({}, car, {
-					time: car.time.find(time => time.tick <= tick),
-					pos: car.pos.find(pos => pos.tick <= tick),
-				});
-			}).sort((a, b) => {
+		// First, simplify objects and cache
+		const reset = () => {
+			ourCars = topCars.map((car) => ({
+				name: car.name,
+				radius: car.radius,
+				lenTime: car.time.length,
+				time: car.time.slice().sort(orderByTickDesc),
+				posn: car.posn.slice().sort(orderByTickDesc),
+			}));
+		};
+		reset();
+
+		const fn = (tick) => {
+			ourCars.forEach((car) => {
+				car.curTime = car.time.find(time => time.tick <= tick);
+				car.curPosn = car.posn.find(posn => posn.tick <= tick);
+			});
+			ourCars.sort((a, b) => {
 				if (a.lenTime === 0 && b.lenTime === 0) return 0;
 				if (a.lenTime === 0) return 1;
 				if (b.lenTime === 0) return -1;
 
-				if (typeof a.time === 'undefined' && typeof b.time === 'undefined') return 0;
-				if (typeof a.time === 'undefined') return 1;
-				if (typeof b.time === 'undefined') return -1;
+				if (typeof a.curTime === 'undefined' && typeof b.curTime === 'undefined') return 0;
+				if (typeof a.curTime === 'undefined') return 1;
+				if (typeof b.curTime === 'undefined') return -1;
 
-				if (a.time.lap < b.time.lap) return 1;
-				if (a.time.lap > b.time.lap) return -1;
-				if (a.time.piece !== b.time.piece) {
+				if (a.curTime.lap < b.curTime.lap) return 1;
+				if (a.curTime.lap > b.curTime.lap) return -1;
+				if (a.curTime.piece !== b.curTime.piece) {
 					// Piece 0 is last piece of the lap
-					if (a.time.piece === 0) return -1;
-					if (b.time.piece === 0) return 1;
-					if (a.time.piece < b.time.piece) return 1;
-					if (a.time.piece > b.time.piece) return -1;
+					if (a.curTime.piece === 0) return -1;
+					if (b.curTime.piece === 0) return 1;
+					if (a.curTime.piece < b.curTime.piece) return 1;
+					if (a.curTime.piece > b.curTime.piece) return -1;
 				}
-				if (a.time.tick < b.time.tick) return -1;
-				if (a.time.tick > b.time.tick) return 1;
+				if (a.curTime.tick < b.curTime.tick) return -1;
+				if (a.curTime.tick > b.curTime.tick) return 1;
 
 				return 0;
 			});
+
+			if (tick % 5 === 0) {
+				console.log('Sam, cars:', tick, ...ourCars.map((car) => {
+					if (car.curTime) return `${car.name[0]}:${car.curTime.lap}:${car.curTime.piece}:${car.curTime.tick}`;
+					return null;
+				}));
+			}
+
+			return ourCars;
 		};
+		fn.reset = reset;
+
+		return fn;
 	})(cars);
 
 	// Build Replay Animation
-	if (cars[0].pos.length > 1) {
+	if (cars[0].posn.length > 1) {
 		console.log('Sam, cars:', cars);
 
 		let lastTick = 0;
@@ -1359,7 +1385,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			];
 			animations.forEach(a => keys.push([]));
 
-			car.pos.forEach((frame) => {
+			car.posn.forEach((frame) => {
 				// Animate car positions
 				keys[0].push({
 					frame: frame.tick * df,
@@ -1437,10 +1463,11 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 					// Point at midpoint
 					value: new Vector3(...['x', 'radius', 'y'].map((k) => {
 						if (k === 'radius') return (first[k] + second[k]) / 2;
-						return (first.pos[k] + second.pos[k]) / 2
+						return (first.curPosn[k] + second.curPosn[k]) / 2
 					})),
 				});
 			}
+			getRaceState.reset();
 
 			// Find last frame for video
 			numFrames = keys.reduce((n, f) => Math.max(n, f[f.length - 1].frame), numFrames);
@@ -1536,13 +1563,13 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		return function(tick) {
 			// Sort cars in order of race position
 			getRaceState(tick).forEach((car, i) => {
-				if (i === 0 && car.time) {
+				if (i === 0 && car.curTime) {
 					// Update Lap Counter
 					advancedTexture.addControl(panelLap);
-					if (car.time.lap > raceTrack.laps) {
+					if (car.curTime.lap > raceTrack.laps) {
 						txtLapCount.text = 'Finish!';
-					} else if (car.time.lap > 0) {
-						txtLapCount.text = `Lap ${car.time.lap} / ${raceTrack.laps}`;
+					} else if (car.curTime.lap > 0) {
+						txtLapCount.text = `Lap ${car.curTime.lap} / ${raceTrack.laps}`;
 					} else {
 						txtLapCount.text = 'GO!';
 					}
@@ -1677,6 +1704,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 					}
 				});
 			} else {
+				getRaceState.reset();
 				stages.race.animes.play(false);
 			}
 		}
