@@ -9,6 +9,9 @@ html {
 }
 
 body {
+	display: flex;
+	flex-flow: column nowrap;
+
 	margin: 0 auto;
 	width: 100%;
 	max-width: 1200px;
@@ -19,6 +22,10 @@ body {
 	@media (min-width: 1201px) {
 		border: solid black;
 		border-width: 0 1px;
+	}
+
+	> main {
+		flex-grow: 1;
 	}
 
 	> * {
