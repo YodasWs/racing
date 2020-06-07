@@ -483,7 +483,10 @@ Object.defineProperties(RaceTrack.prototype, {
 						// Cross the start/end line, next lap
 						if (piece === 0) {
 							if (!this.finalStanding.includes(car.name)) {
-								car.lapTimes.push(this.time);
+								car.lapTimes.push({
+									tick: this.tick,
+									time: this.time,
+								});
 							}
 
 							if (car.lapTimes.length > this.laps) {
@@ -943,15 +946,15 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	sun.diffuse = new Color3(1, 1, 1);
 	sun.intensity = 0.5;
 
+	// TODO: Give each camera one or more of:
+	// 1. bounding box for which cameraTarget must be for camera to be used
+	// 2. maximum distance between camera and cameraTarget for camera to be used
 	const cameras = [
 		new UniversalCamera('universalCamera3', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
 		new UniversalCamera('universalCamera1', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene),
 		new UniversalCamera('universalCamera2', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
 		new UniversalCamera('universalCamera4', new Vector3(-35, 20, raceTrack.extrema[y][1] + 30), scene),
 		new UniversalCamera('universalCameraA', new Vector3(raceTrack.extrema[x][0] + 200, 20, raceTrack.extrema[y][0] - 10), scene),
-		// new UniversalCamera('universalCameraB', new Vector3(raceTrack.extrema[x][0] + 150, 20, raceTrack.extrema[y][0] - 10), scene),
-		// new UniversalCamera('universalCameraC', new Vector3(raceTrack.extrema[x][0] +   0, 20, raceTrack.extrema[y][0] - 10), scene),
-		// new UniversalCamera('universalCameraD', new Vector3(raceTrack.extrema[x][0] -  50, 20, raceTrack.extrema[y][0] - 10), scene),
 	];
 
 	/*
@@ -1018,15 +1021,34 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		const keys = [];
 		const a = new Animation('spinningCamera', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
 
-		const dist = plane.cross * (0.5 + 1 / 6);
+		const [
+			axisX,
+			axisZ,
+		] = (() => {
+			if (plane.height < plane.width)
+				return [
+					plane.width * (1 / 2 + 1 / 5),
+					plane.height * (1 / 2 + 1 / 2),
+				];
+			return [
+					plane.width * (1 / 2 + 1 / 6),
+					plane.height * (1 / 2 + 1 / 6),
+			];
+		})();
+
+		// TODO: Add camera target that's circling the center in the opposite direction such that
+		// when camera is closest to center, the camera target is at the opposite point in their orbits,
+		// but when camera is furthest from center, the camera target is closest to camera
+		// X: Math.sin(-i * Math.PI / 180) * 10 + plane.midpoint.x,
+		// Z: Math.cos(-i * Math.PI / 180) * 10 + plane.midpoint.z
 
 		for (let i=0; i<360; i++) {
 			keys.push({
 				frame: i * 6,
 				value: new Vector3(
-					Math.cos(i * Math.PI / 180) * dist + plane.midpoint.x,
+					Math.cos(i * Math.PI / 180) * axisX + plane.midpoint.x,
 					100,
-					Math.sin(i * Math.PI / 180) * dist + plane.midpoint.z
+					Math.sin(i * Math.PI / 180) * axisZ + plane.midpoint.z
 				),
 			});
 		}
@@ -1123,8 +1145,6 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	// Directorial Control over Video!
 	const stages = {
 		flyover: {
-			secondsToSwitchCameras: 4,
-			rotateCamera: true,
 			playTime: 4,
 			nextStage: 'countdown',
 			loopAnimes: true,
@@ -1147,7 +1167,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		afterRace: {
 			secondsToSwitchCameras: 2.5,
 			rotateCamera: true,
-			playTime: 10,
+			playTime: 20,
 			cameras,
 		},
 	};
@@ -1173,11 +1193,15 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 	// Clean up stage to prepare for next stage of video
 	stages.events.addEventListener('end', function (e) {
-		const stage = e.detail;
-		if (stages[stage]) {
-			if (typeof stages[stage].onEndStage === 'function') stages[stage].onEndStage();
-			if (stages[stage].nextStage && stages[stages[stage].nextStage]) {
-				this.dispatchEvent(new CustomEvent('start', { detail: stages[stage].nextStage }));
+		const stageName = e.detail;
+		if (stages[stageName]) {
+			const stage = stages[stageName];
+			if (typeof stage.onEndStage === 'function') stage.onEndStage();
+			if (stage.nextStage && stages[stage.nextStage]) {
+				this.dispatchEvent(new CustomEvent('start', { detail: stage.nextStage }));
+			}
+			if (stage.overlay) {
+				stage.overlay.dispose();
 			}
 		}
 	});
@@ -1259,7 +1283,6 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			AdvancedDynamicTexture,
 			Control,
 			Rectangle,
-			StackPanel,
 			TextBlock,
 		} = GUI;
 
@@ -1457,16 +1480,13 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 			for (let tick=0; tick < lastTick; tick++) {
 				// Get front two cars
-				const [
-					first,
-					second,
-				] = getRaceState(tick);
+				const frontCars = getRaceState(tick).slice(0, 3);
 				keys[0].push({
 					frame: tick * df,
 					// Point at midpoint
 					value: new Vector3(...['x', 'radius', 'y'].map((k) => {
-						if (k === 'radius') return (first[k] + second[k]) / 2;
-						return (first.curPosn[k] + second.curPosn[k]) / 2
+						if (k === 'radius') return frontCars.reduce((sum, car) => sum + car[k], 0) / frontCars.length;
+						return frontCars.reduce((sum, car) => sum + car.curPosn[k], 0) / frontCars.length;
 					})),
 				});
 			}
@@ -1620,7 +1640,6 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			}
 		}
 	};
-	/**/
 	scene.afterRender = (scene) => {
 		// Add frame to movie for export
 		// But skip inital rending frames before everything is added
