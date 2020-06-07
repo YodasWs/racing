@@ -907,6 +907,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	scene.useRightHandedSystem = true;
 	scene.ambientColor = new Color3(0.8, 0.8, 0.8);
 
+	// Find important properties of the track field
 	const plane = {
 		cross: Math.max(
 			Math.abs(raceTrack.extrema[x][1] - raceTrack.extrema[x][0]),
@@ -920,6 +921,45 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			(raceTrack.extrema[y][0] + raceTrack.extrema[y][1]) / 2
 		),
 	};
+
+	// Extend objects to use Spherical Coordinates
+	// Origin is in center/midpoint of track field
+	(() => {
+		Object.entries({
+			sPosition: {
+				get() {
+					const p = [
+						this.position.x - plane.midpoint.x,
+						this.position.y - plane.midpoint.y,
+						this.position.z - plane.midpoint.z,
+					];
+					const r = Math.hypot(...p);
+					return {
+						r,
+						φ: p[x] === 0 ? 0 : Math.atan(p[z] / p[x]),
+						θ: p[y] === 0 ? 0 : Math.acos(Math.hypot(p[x] / r, p[z] / r) / p[y] / r),
+					};
+				},
+				set(...coords) {
+					const [r, φ, θ] = Array.isArray(coords[0]) ? coords[0] : coords;
+					this.position = new Vector3(
+						r * Math.sin(θ) * Math.cos(φ) + plane.midpoint.x,
+						r * Math.sin(θ) * Math.sin(φ) + plane.midpoint.z,
+						r * Math.cos(θ) + plane.midpoint.y
+					);
+				},
+			},
+		}).forEach(([key, val]) => {
+			[
+				BABYLON.TransformNode.prototype,
+				BABYLON.Camera.prototype,
+			].forEach((obj) => {
+				if (!obj.hasOwnProperty(key)) {
+					Object.defineProperty(obj, key, val);
+				}
+			});
+		});
+	})();
 
 	// Build the sky
 	const skyMaterial = new SkyMaterial('sky', scene);
@@ -1016,7 +1056,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	dtGround.mesh.material = grass;
 	dtGround.isAlwaysVisible = true;
 
-	// Set animation of spinning camera
+	// Set animation of overhead circling camera
 	(() => {
 		const keys = [];
 		const a = new Animation('spinningCamera', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
