@@ -178,11 +178,13 @@ yodasws.page('home').setRoute({
 		}
 	});
 
-	document.getElementById('btnTick').addEventListener('click', (evt) => {
-		evt.preventDefault();
-		raceTrack.simulation.tick();
-		raceTrack.onTick();
-	});
+	if (document.getElementById('btnTick') instanceof Element) {
+		document.getElementById('btnTick').addEventListener('click', (evt) => {
+			evt.preventDefault();
+			raceTrack.simulation.tick();
+			raceTrack.onTick();
+		});
+	}
 
 	document.querySelector('input[type="file"]').addEventListener('change', (evt) => {
 		const file = evt.target.files[0];
@@ -209,7 +211,7 @@ yodasws.page('home').setRoute({
 });
 
 const gravity = 1 / 10;
-const correctiveStrength = 1 / 15;
+const correctiveStrength = 0;
 
 function TrackPiece(options) {
 	Object.assign(this, {
@@ -942,11 +944,11 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	sun.intensity = 0.5;
 
 	const cameras = [
-		// new UniversalCamera('universalCamera3', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
+		new UniversalCamera('universalCamera3', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
 		new UniversalCamera('universalCamera1', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene),
-		// new UniversalCamera('universalCamera2', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
-		// new UniversalCamera('universalCamera4', new Vector3(-35, 20, raceTrack.extrema[y][1] + 30), scene),
-		// new UniversalCamera('universalCameraA', new Vector3(raceTrack.extrema[x][0] + 200, 20, raceTrack.extrema[y][0] - 10), scene),
+		new UniversalCamera('universalCamera2', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
+		new UniversalCamera('universalCamera4', new Vector3(-35, 20, raceTrack.extrema[y][1] + 30), scene),
+		new UniversalCamera('universalCameraA', new Vector3(raceTrack.extrema[x][0] + 200, 20, raceTrack.extrema[y][0] - 10), scene),
 		// new UniversalCamera('universalCameraB', new Vector3(raceTrack.extrema[x][0] + 150, 20, raceTrack.extrema[y][0] - 10), scene),
 		// new UniversalCamera('universalCameraC', new Vector3(raceTrack.extrema[x][0] +   0, 20, raceTrack.extrema[y][0] - 10), scene),
 		// new UniversalCamera('universalCameraD', new Vector3(raceTrack.extrema[x][0] -  50, 20, raceTrack.extrema[y][0] - 10), scene),
@@ -1009,8 +1011,9 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	}, scene);
 	dtGround.updateCameraLOD = camera => Math.abs((camera.globalPosition.y / 10)|0);
 	dtGround.mesh.material = grass;
-	// dtGround.isAlwaysVisible = true;
+	dtGround.isAlwaysVisible = true;
 
+	// Set animation of spinning camera
 	(() => {
 		const keys = [];
 		const a = new Animation('spinningCamera', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
@@ -1019,7 +1022,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 		for (let i=0; i<360; i++) {
 			keys.push({
-				frame: i,
+				frame: i * 6,
 				value: new Vector3(
 					Math.cos(i * Math.PI / 180) * dist + plane.midpoint.x,
 					100,
@@ -1032,9 +1035,9 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		const animes = new AnimationGroup('animeFlyover');
 		animes.normalize(0, keys[keys.length - 1].frame);
 
-		cameras.forEach((c) => {
-			c.lockedTarget = plane.midpoint;
-			animes.addTargetedAnimation(a, c);
+		cameras.filter(cam => cam.id === 'universalCameraA').forEach((cam) => {
+			cam.lockedTarget = plane.midpoint;
+			animes.addTargetedAnimation(a, cam);
 		});
 
 		animes.play(true);
@@ -1125,7 +1128,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			playTime: 4,
 			nextStage: 'countdown',
 			loopAnimes: true,
-			camera: cameras.find(cam => cam.id === 'universalCamera3'),
+			camera: cameras.find(cam => cam.id === 'universalCameraA'),
 			cameras,
 		},
 		countdown: {
@@ -1609,8 +1612,13 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		}
 	});
 
-	/*
 	scene.beforeRender = (scene) => {
+		if (dtGround.camera !== scene.activeCamera) {
+			dtGround.camera = scene.activeCamera;
+			if (dtGround.camera.position.y < 30) {
+				dtGround.initialLOD = 5;
+			}
+		}
 	};
 	/**/
 	scene.afterRender = (scene) => {
