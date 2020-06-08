@@ -1747,9 +1747,28 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			if (doExport) {
 				clearInterval(aniInterval);
 				console.log('Sam, done running WebGL animation');
-				// Open resulting video!
+				// Display resulting video!
 				videoWriter.complete().then((blob) => {
-					window.open(URL.createObjectURL(blob), '_blank');
+					const videoUrl = URL.createObjectURL(blob);
+					const main = document.querySelector('main');
+					if (main instanceof Element) {
+						// Link to video
+						const link = document.createElement('a');
+						link.innerText = 'Open  in new window';
+						link.setAttribute('target', '_blank');
+						link.setAttribute('href', videoUrl);
+						main.appendChild(link);
+
+						// Video player
+						const elVideo = document.createElement('video');
+						const elSrc = document.createElement('source');
+						elSrc.setAttribute('type', 'video/webm');
+						elSrc.setAttribute('src', videoUrl);
+						elVideo.appendChild(elSrc);
+						main.appendChild(elVideo);
+					} else {
+						window.open(videoUrl, '_blank');
+					}
 				});
 			} else {
 				getRaceState.reset();
