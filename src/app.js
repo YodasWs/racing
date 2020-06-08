@@ -95,7 +95,7 @@ yodasws.page('home').setRoute({
 
 	json.cSuzuka.forEach((piece) => {
 		piece.delta = piece.delta.map(a => a * 2);
-		if (piece.rail instanceof Array) {
+		if (Array.isArray(piece.rail)) {
 			piece.rail = piece.rail.map(a => a * 1.5);
 		}
 	});
@@ -369,10 +369,10 @@ function RaceTrack(svg, track, cars, options = {}) {
 		},
 	});
 
-	if (track instanceof Array) {
+	if (Array.isArray(track)) {
 		this.setTrack(track);
 	}
-	if (cars instanceof Array) {
+	if (Array.isArray(cars)) {
 		this.setCars(cars);
 	}
 }
@@ -1167,7 +1167,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		}, scene);
 		car.sphere.position = new Vector3(posn.x, car.radius, posn.y);
 
-		if (car.rgb instanceof Array) {
+		if (Array.isArray(car.rgb)) {
 			const material = new StandardMaterial(`${car.name}Material`, scene);
 			material.diffuseColor = new Color3(...car.rgb.map(c => c / 0xff));
 			material.ambientColor = new Color3(...car.rgb.map(c => c / 0xff));
