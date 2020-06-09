@@ -1354,13 +1354,17 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 
 		let i = 3;
 		let countdown;
+		const fnUpdateCountDown = () => {
+			if (i === 3) advancedTexture.addControl(panelCountdown);
+			if (i > 0) txt.text = i.toString();
+			else txt.text = 'Go!';
+			i--;
+		};
 		stage.onStartStage = () => {
-			countdown = setInterval(() => {
-				if (i === 3) advancedTexture.addControl(panelCountdown);
-				if (i > 0) txt.text = i.toString();
-				else txt.text = 'Go!';
-				i--;
-			}, 1000 * frameRate / fps);
+			setTimeout(() => {
+				fnUpdateCountDown();
+				countdown = setInterval(fnUpdateCountDown, 1000 * frameRate / fps);
+			}, 500 * frameRate / fps);
 		};
 
 		stage.onEndStage = () => {
