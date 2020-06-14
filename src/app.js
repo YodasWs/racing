@@ -871,11 +871,11 @@ function closestPoint(pathNode, point) {
  */
 let aniInterval;
 
-function buildReplay(raceTrack, { fps, doExport, frameRate } = {
-	doExport: false,
-	frameRate: 60,
-	fps: 30,
-}) {
+function buildReplay(raceTrack, {
+	doExport = false,
+	frameRate = 30,
+	fps = 30,
+} = {}) {
 	console.log('Sam, let\'s do this!');
 	clearInterval(aniInterval);
 	const {
@@ -1195,7 +1195,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			animes: new AnimationGroup('animeCountdown'),
 			camera: cameras.find(cam => cam.id === 'universalCamera1'),
 			nextStage: 'race',
-			playTime: 4,
+			playTime: 3.5,
 		},
 		race: {
 			animes: new AnimationGroup('animeRace'),
@@ -1240,7 +1240,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 			if (stage.nextStage && stages[stage.nextStage]) {
 				this.dispatchEvent(new CustomEvent('start', { detail: stage.nextStage }));
 			}
-			if (stage.overlay) {
+			if (stage.overlay && stage.overlay.autoDispose) {
 				stage.overlay.dispose();
 			}
 		}
@@ -1329,6 +1329,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		const advancedTexture = new AdvancedDynamicTexture.CreateFullscreenUI('myUI');
 		advancedTexture.useInvalidateRectOptimization = false;
 		advancedTexture.renderScale = 2;
+		stage.overlay = advancedTexture;
 
 		// Panel to show countdown
 		const panelCountdown = new Rectangle();
@@ -1362,17 +1363,21 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		};
 		stage.onStartStage = () => {
 			setTimeout(() => {
-				fnUpdateCountDown();
-				countdown = setInterval(fnUpdateCountDown, 1000 * frameRate / fps);
+				fnUpdateCountDown(); // 3
+				countdown = setInterval(fnUpdateCountDown, 1000 * frameRate / fps); // 2, 1
 			}, 500 * frameRate / fps);
 		};
 
 		stage.onEndStage = () => {
 			console.log('Sam, onEndStage!');
-			if (countdown) clearInterval(countdown);
+			if (countdown) {
+				fnUpdateCountDown(); // Go!
+				clearInterval(countdown);
+			}
 			setTimeout(() => {
 				advancedTexture.removeControl(panelCountdown);
-			}, 200);
+				advancedTexture.dispose();
+			}, 1000 * frameRate / fps);
 		};
 	})(stages.countdown);
 
@@ -1565,7 +1570,7 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	 * https://doc.babylonjs.com/api/modules/babylon.gui
 	 */
 	// Display position information in screen overlay
-	const drawOverlay = ((GUI) => {
+	const drawOverlay = (() => {
 		const {
 			AdvancedDynamicTexture,
 			Control,
@@ -1577,6 +1582,8 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		const advancedTexture = new AdvancedDynamicTexture.CreateFullscreenUI('myUI');
 		advancedTexture.useInvalidateRectOptimization = false;
 		advancedTexture.renderScale = 2;
+		stages.race.overlay = advancedTexture;
+		stages.race.overlay.autoDispose = true;
 
 		// Add panel to list cars by position
 		const panelPositions = new StackPanel();
@@ -1588,7 +1595,11 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 		panelPositions.left = '0';
 		panelPositions.clipChildren = false;
 		panelPositions.clipContent = false;
-		advancedTexture.addControl(panelPositions);
+
+		stages.events.addEventListener('start', function (e) {
+			if (e.detail !== 'flyover') return;
+			advancedTexture.addControl(panelPositions);
+		});
 
 		// Add panel for lap counter
 		const panelLap = new StackPanel();
@@ -1646,7 +1657,58 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 				txtCarsPositions[i].text = `${i + 1} ${car.name}`;
 			});
 		};
-	})(GUI);
+	})();
+
+	// Define overlay for afterRace
+	((stageName) => {
+		const {
+			AdvancedDynamicTexture,
+			Control,
+			StackPanel,
+			TextBlock,
+		} = GUI;
+		const stage = stages[stageName];
+
+		const advancedTexture = new AdvancedDynamicTexture.CreateFullscreenUI('myUI');
+		advancedTexture.useInvalidateRectOptimization = false;
+		advancedTexture.renderScale = 2;
+		stage.overlay = advancedTexture;
+
+		// Add panel to list cars by position
+		const panelPositions = new StackPanel();
+		panelPositions.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+		panelPositions.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+		panelPositions.background = 'white';
+		panelPositions.width = '0.31';
+		panelPositions.clipChildren = false;
+		panelPositions.clipContent = false;
+
+		const txtCarsPositions = new Array(cars.length).fill(0).map((b, i) => {
+			// Draw names on screen overlay
+			const txt = new TextBlock();
+			txt.fontSize = 150;
+			txt.color = 'black';
+			txt.paddingLeft = '10px';
+			txt.height = `${txt.fontSize + 30}px`;
+			txt.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+			txt.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+			panelPositions.addControl(txt);
+			return txt;
+		});
+
+		stages.events.addEventListener('start', function (e) {
+			if (e.detail !== stageName) return;
+			advancedTexture.addControl(panelPositions);
+		});
+
+		stage.overlay.render = () => {
+			// Sort cars in order of race position
+			getRaceState(numFrames / df).forEach((car, i) => {
+				// Draw names on screen overlay
+				txtCarsPositions[i].text = `${i + 1} ${car.name}`;
+			});
+		};
+	})('afterRace');
 
 	scene.activeCamera = cameras[0];
 
@@ -1727,7 +1789,14 @@ function buildReplay(raceTrack, { fps, doExport, frameRate } = {
 	aniInterval = setInterval(() => {
 		scene.render();
 
-		if (frame === 0 || stages.race.animes.isPlaying) drawOverlay(frame / df);
+		if ([
+			'flyover',
+			'countdown',
+		].includes(currentStage)) drawOverlay(0);
+		if (stages.race.animes.isPlaying) drawOverlay(frame / df);
+		if (stages[currentStage].overlay && typeof stages[currentStage].overlay.render === 'function') {
+			stages[currentStage].overlay.render(frame / df);
+		}
 
 		// Change cameras during race
 		if (stages[currentStage].rotateCamera === true && frame % stages[currentStage].framesToSwitchCameras === 0) {
