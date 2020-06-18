@@ -808,6 +808,7 @@ const RaceCamera = (() => {
 let aniInterval;
 
 function buildReplay(raceTrack, {
+	OverheadCirclingSpeed = 5,
 	filmCountdownOnly = false,
 	doExport = false,
 	targetFrameRate = 30,
@@ -1021,11 +1022,11 @@ function buildReplay(raceTrack, {
 
 		for (let i=0; i<360; i++) {
 			keys.push({
-				frame: i * 6,
+				frame: Math.floor(i * OverheadCirclingSpeed),
 				value: new Vector3(
-					Math.cos(i * Math.PI / 180) * axisX + plane.midpoint.x,
+					Math.cos((180 + i) * Math.PI / 180) * axisX + plane.midpoint.x,
 					100,
-					Math.sin(i * Math.PI / 180) * axisZ + plane.midpoint.z
+					Math.sin((180 + i) * Math.PI / 180) * axisZ + plane.midpoint.z
 				),
 			});
 		}
@@ -1434,6 +1435,7 @@ function buildReplay(raceTrack, {
 				btn.setAttribute('disabled', 'disabled');
 				clearInterval(aniInterval);
 				buildReplay(raceTrack, {
+					OverheadCirclingSpeed: 2.5,
 					doExport: true,
 					targetFrameRate: 60,
 					renderFrameRate: 2,
@@ -1479,6 +1481,10 @@ function buildReplay(raceTrack, {
 			// Start cameras pointing at start of animation
 			cameraTarget.position = keys[0][0].value;
 			stages.race.cameras.forEach(camera => camera.lockedTarget = cameraTarget);
+
+			cameras.filter(cam => cam.id === 'universalCameraA').forEach((cam) => {
+				cam.lockedTarget = cameraTarget;
+			});
 
 			// Set animation frame keys and add to group
 			animations.forEach((a, i) => {
