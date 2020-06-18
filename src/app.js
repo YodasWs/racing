@@ -864,6 +864,63 @@ function closestPoint(pathNode, point) {
 	};
 }
 
+// Define a custom Camera object with lots of customizations for us
+
+const RaceCamera = (() => {
+	function RaceCamera(cameraType, ...args) {
+		this.φRange = [0, 2 * Math.PI];
+	}
+
+	Object.defineProperties(RaceCamera.prototype, {
+		sPosition: {
+			get() {
+				const p = [
+					this.position.x - plane.midpoint.x,
+					this.position.y - plane.midpoint.y,
+					this.position.z - plane.midpoint.z,
+				];
+				const r = Math.hypot(...p);
+				return {
+					r,
+					φ: p[x] === 0 ? 0 : Math.atan(p[z] / p[x]),
+					θ: p[y] === 0 ? 0 : Math.acos(Math.hypot(p[x] / r, p[z] / r) / p[y] / r),
+				};
+			},
+			set(...coords) {
+				const [r, φ, θ] = Array.isArray(coords[0]) ? coords[0] : coords;
+				this.position = new Vector3(
+					r * Math.sin(θ) * Math.cos(φ) + plane.midpoint.x,
+					r * Math.sin(θ) * Math.sin(φ) + plane.midpoint.z,
+					r * Math.cos(θ) + plane.midpoint.y
+				);
+			},
+		},
+	});
+
+	const fn = new Proxy(RaceCamera, {
+		construct(target, args) {
+			const cameraType = args[0];
+			const Camera = BABYLON[cameraType];
+			if (!Camera) throw new TypeError(`Unknown camera type '${cameraType}'`);
+			if (!(Camera.prototype instanceof BABYLON.TargetCamera))
+				throw new TypeError(`Invalid camera type '${cameraType}'`);
+
+			const NewRaceCamera = Object.create(target);
+			NewRaceCamera.prototype = Object.create(Camera.prototype);
+			NewRaceCamera.prototype.constructor = RaceCamera;
+
+			const obj = Object.create(NewRaceCamera.prototype);
+			this.apply(target, obj, args);
+			return obj;
+		},
+		apply(target, that, [cameraType, ...args]) {
+			BABYLON[cameraType].apply(that, args);
+			return target.apply(that, [cameraType, ...args]);
+		},
+	});
+	return fn;
+})();
+
 /* Documentation:
  * https://doc.babylonjs.com/babylon101/discover_basic_elements
  * https://doc.babylonjs.com/api/globals
@@ -990,11 +1047,12 @@ function buildReplay(raceTrack, {
 	// 1. bounding box for which cameraTarget must be for camera to be used
 	// 2. maximum distance between camera and cameraTarget for camera to be used
 	const cameras = [
-		new UniversalCamera('universalCamera3', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
-		new UniversalCamera('universalCamera1', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene),
-		new UniversalCamera('universalCamera2', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
-		new UniversalCamera('universalCamera4', new Vector3(-35, 20, raceTrack.extrema[y][1] + 30), scene),
-		new UniversalCamera('universalCameraA', new Vector3(raceTrack.extrema[x][0] + 200, 20, raceTrack.extrema[y][0] - 10), scene),
+		// new ArcRotateCamera('arc', -Math.PI / 2, 7 * Math.PI / 16, 100, new Vector3(0, 0, 0), scene),
+		new RaceCamera('UniversalCamera', 'universalCamera3', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
+		new RaceCamera('UniversalCamera', 'universalCamera1', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene),
+		new RaceCamera('UniversalCamera', 'universalCamera2', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
+		new RaceCamera('UniversalCamera', 'universalCamera4', new Vector3(-35, 20, raceTrack.extrema[y][1] + 30), scene),
+		new RaceCamera('UniversalCamera', 'universalCameraA', new Vector3(raceTrack.extrema[x][0] + 200, 20, raceTrack.extrema[y][0] - 10), scene),
 	];
 
 	/*
@@ -1530,13 +1588,16 @@ function buildReplay(raceTrack, {
 			for (let tick=0; tick < lastTick; tick++) {
 				// Get front two cars
 				const frontCars = getRaceState(tick).slice(0, 3);
+				const position = [
+					frontCars.reduce((sum, car) => sum + car.curPosn.x, 0) / frontCars.length,
+					frontCars.reduce((sum, car) => sum + car.radius, 0) / frontCars.length,
+					frontCars.reduce((sum, car) => sum + car.curPosn.y, 0) / frontCars.length,
+				];
 				keys[0].push({
 					frame: tick * df,
 					// Point at midpoint
-					value: new Vector3(...['x', 'radius', 'y'].map((k) => {
-						if (k === 'radius') return frontCars.reduce((sum, car) => sum + car[k], 0) / frontCars.length;
-						return frontCars.reduce((sum, car) => sum + car.curPosn[k], 0) / frontCars.length;
-					})),
+					value: new Vector3(...position),
+					φ: position[x] === 0 ? 0 : Math.atan(position[z] / position[x]),
 				});
 			}
 			getRaceState.reset();
