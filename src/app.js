@@ -325,8 +325,6 @@ Object.defineProperties(RaceTrack.prototype, {
 			this.moveCars();
 			this.listCars();
 			if (this.cars.every(c => c.lapTimes.length > this.laps)) {
-				console.log('Sam, race over?');
-				console.log('Sam, cars:', this.cars);
 				this.simulation.stop();
 
 				// Remove circular reference for conversion to JSON
@@ -406,7 +404,6 @@ Object.defineProperties(RaceTrack.prototype, {
 					|| car.x > this.extrema[x][1] + 10
 					|| car.y < this.extrema[y][0] - 10
 					|| car.y > this.extrema[y][1] + 10) {
-					console.log('Sam, car out of bounds!');
 					this.simulation.stop();
 				}
 			});
@@ -811,11 +808,11 @@ const RaceCamera = (() => {
 let aniInterval;
 
 function buildReplay(raceTrack, {
+	filmCountdownOnly = false,
 	doExport = false,
-	frameRate = 30,
-	fps = 30,
+	targetFrameRate = 30,
+	renderFrameRate = 30,
 } = {}) {
-	console.log('Sam, let\'s do this!');
 	clearInterval(aniInterval);
 	const {
 		AbstractMesh,
@@ -999,7 +996,7 @@ function buildReplay(raceTrack, {
 	// Set animation of overhead circling camera
 	(() => {
 		const keys = [];
-		const a = new Animation('spinningCamera', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
+		const a = new Animation('spinningCamera', 'position', renderFrameRate, Animation.ANIMATIONTYPE_VECTOR3, Animation.ANIMATIONLOOPMODE_CYCLE);
 
 		const [
 			axisX,
@@ -1125,7 +1122,7 @@ function buildReplay(raceTrack, {
 	// Directorial Control over Video!
 	const stages = {
 		flyover: {
-			playTime: 4,
+			playTime: filmCountdownOnly ? 1 : 20,
 			nextStage: 'countdown',
 			loopAnimes: true,
 			camera: cameras.find(cam => cam.id === 'universalCameraA'),
@@ -1167,7 +1164,7 @@ function buildReplay(raceTrack, {
 		if (Number.isFinite(stage.playTime) && stage.playTime > 0) {
 			setTimeout(() => {
 				this.dispatchEvent(new CustomEvent('end', { detail: currentStage }));
-			}, stage.playTime * 1000 * frameRate / fps);
+			}, stage.playTime * 1000 * targetFrameRate / renderFrameRate);
 		}
 	});
 
@@ -1202,8 +1199,8 @@ function buildReplay(raceTrack, {
 		const keys = [];
 		const flyoverLoopMode = cars[0].posn.length <= 1 ? Animation.ANIMATIONLOOPMODE_CYCLE : Animation.ANIMATIONLOOPMODE_CONSTANT;
 		const animations = [
-			new Animation('flyoverTrackP', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, flyoverLoopMode),
-			new Animation('flyoverTrackR', 'rotationOffset', fps, Animation.ANIMATIONTYPE_VECTOR3, flyoverLoopMode),
+			new Animation('flyoverTrackP', 'position', renderFrameRate, Animation.ANIMATIONTYPE_VECTOR3, flyoverLoopMode),
+			new Animation('flyoverTrackR', 'rotationOffset', renderFrameRate, Animation.ANIMATIONTYPE_VECTOR3, flyoverLoopMode),
 		];
 		animations.forEach(a => keys.push([]));
 
@@ -1216,7 +1213,7 @@ function buildReplay(raceTrack, {
 
 			if (i > 0) {
 				const last = a[i - 1];
-				frame += Vector3.Distance(positionValue, new Vector3(last.x, 0, last.y)) / 75 * frameRate;
+				frame += Vector3.Distance(positionValue, new Vector3(last.x, 0, last.y)) / 75 * targetFrameRate;
 			}
 
 			keys[0].push({
@@ -1304,12 +1301,11 @@ function buildReplay(raceTrack, {
 		stage.onStartStage = () => {
 			setTimeout(() => {
 				fnUpdateCountDown(); // 3
-				countdown = setInterval(fnUpdateCountDown, 1000 * frameRate / fps); // 2, 1
-			}, 500 * frameRate / fps);
+				countdown = setInterval(fnUpdateCountDown, 1000 * targetFrameRate / renderFrameRate); // 2, 1
+			}, 500 * targetFrameRate / renderFrameRate);
 		};
 
 		stage.onEndStage = () => {
-			console.log('Sam, onEndStage!');
 			if (countdown) {
 				fnUpdateCountDown(); // Go!
 				clearInterval(countdown);
@@ -1317,7 +1313,7 @@ function buildReplay(raceTrack, {
 			setTimeout(() => {
 				advancedTexture.removeControl(panelCountdown);
 				advancedTexture.dispose();
-			}, 1000 * frameRate / fps);
+			}, 1000 * targetFrameRate / renderFrameRate);
 		};
 	})(stages.countdown);
 
@@ -1368,13 +1364,6 @@ function buildReplay(raceTrack, {
 				return 0;
 			});
 
-			if (tick % 5 === 0) {
-				console.log('Sam, cars:', tick, ...ourCars.map((car) => {
-					if (car.curTime) return `${car.name[0]}:${car.curTime.lap}:${car.curTime.piece}:${car.curTime.tick}`;
-					return null;
-				}));
-			}
-
 			return ourCars;
 		};
 		fn.reset = reset;
@@ -1384,8 +1373,6 @@ function buildReplay(raceTrack, {
 
 	// Build Replay Animation
 	if (cars[0].posn.length > 1) {
-		console.log('Sam, cars:', cars);
-
 		let lastTick = 0;
 
 		const TwoPi = Math.PI * 2;
@@ -1395,8 +1382,8 @@ function buildReplay(raceTrack, {
 
 			const keys = [];
 			const animations = [
-				new Animation(`moveAnime${car.name}`, 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, animationLoopMode),
-				new Animation(`spinAnime${car.name}`, 'rotation', fps, Animation.ANIMATIONTYPE_VECTOR3, animationLoopMode),
+				new Animation(`moveAnime${car.name}`, 'position', renderFrameRate, Animation.ANIMATIONTYPE_VECTOR3, animationLoopMode),
+				new Animation(`spinAnime${car.name}`, 'rotation', renderFrameRate, Animation.ANIMATIONTYPE_VECTOR3, animationLoopMode),
 			];
 			animations.forEach(a => keys.push([]));
 
@@ -1448,8 +1435,8 @@ function buildReplay(raceTrack, {
 				clearInterval(aniInterval);
 				buildReplay(raceTrack, {
 					doExport: true,
-					frameRate: 60,
-					fps: 2,
+					targetFrameRate: 60,
+					renderFrameRate: 2,
 				});
 			});
 
@@ -1463,7 +1450,7 @@ function buildReplay(raceTrack, {
 		(() => {
 			const keys = [];
 			const animations = [
-				new Animation('cameraTrack', 'position', fps, Animation.ANIMATIONTYPE_VECTOR3, animationLoopMode),
+				new Animation('cameraTrack', 'position', renderFrameRate, Animation.ANIMATIONTYPE_VECTOR3, animationLoopMode),
 			];
 			animations.forEach(a => keys.push([]));
 
@@ -1502,7 +1489,6 @@ function buildReplay(raceTrack, {
 
 		// Set length of animation
 		stages.race.animes.normalize(0, numFrames);
-		console.log('Sam, maybe setTimeout?');
 	} else {
 		// Point cameras at start line
 		delete stages.flyover.nextStage;
@@ -1655,11 +1641,11 @@ function buildReplay(raceTrack, {
 
 	scene.activeCamera = cameras[0];
 
-	const videoWriter = ((fps, doExport) => {
+	const videoWriter = ((doExport) => {
 		if (doExport) {
 			return new WebMWriter({
 				quality: 0.95,
-				frameRate,
+				frameRate: targetFrameRate,
 			});
 		}
 
@@ -1669,7 +1655,7 @@ function buildReplay(raceTrack, {
 				return Promise.reject();
 			},
 		};
-	})(fps, doExport);
+	})(doExport);
 
 	let frame = 0;
 	let k = 0;
@@ -1677,7 +1663,7 @@ function buildReplay(raceTrack, {
 
 	Object.entries(stages).forEach(([key, stage]) => {
 		if (Number.isFinite(stage.secondsToSwitchCameras)) {
-			stages[key].framesToSwitchCameras = stage.secondsToSwitchCameras * frameRate;
+			stages[key].framesToSwitchCameras = stage.secondsToSwitchCameras * targetFrameRate;
 		}
 	});
 
@@ -1706,7 +1692,6 @@ function buildReplay(raceTrack, {
 			stage.animes.onAnimationGroupPlayObservable.add(stage.onStartAnimation);
 		}
 		stage.animes.onAnimationGroupEndObservable.add(() => {
-			console.log('Sam, end', detail);
 			stages.events.dispatchEvent(new CustomEvent('end', { detail }));
 		});
 	});
@@ -1723,7 +1708,7 @@ function buildReplay(raceTrack, {
 		frame = 0;
 		k = 0;
 		n = 0;
-		numFrames = stages.afterRace.playTime * frameRate;
+		numFrames = stages.afterRace.playTime * targetFrameRate;
 		stages.events.dispatchEvent(new CustomEvent('end', { detail: 'race' }));
 	});
 
@@ -1754,13 +1739,19 @@ function buildReplay(raceTrack, {
 
 		frame++;
 
-		if (frame % 10 === 0 && doExport) console.log('Sam, frame', frame, ',', (frame / frameRate).toFixed(3), 'seconds');
+		if (frame % 10 === 0 && doExport) console.log('Sam, frame', frame, ',', (frame / targetFrameRate).toFixed(3), 'seconds');
+
+		let endVideo = false;
+
+		if (filmCountdownOnly && currentStage === 'race' && frame >= 1 * targetFrameRate) endVideo = true;
+
+		if (currentStage === 'afterRace' && frame >= stages.afterRace.playTime * targetFrameRate) endVideo = true;
 
 		// Animation finished, do not continue, save video
-		if (currentStage === 'afterRace' && frame >= stages.afterRace.playTime * frameRate) {
+		if (endVideo) {
 			console.log('Sam, at end of video!');
 
-			if (doExport) {
+			if (doExport || filmCountdownOnly) {
 				clearInterval(aniInterval);
 				console.log('Sam, done running WebGL animation');
 				// Display resulting video!
@@ -1791,7 +1782,7 @@ function buildReplay(raceTrack, {
 				stages.race.animes.play(false);
 			}
 		}
-	}, 1000 / fps);
+	}, 1000 / renderFrameRate);
 
 	engine.resize();
 	window.addEventListener('resize', () => {
