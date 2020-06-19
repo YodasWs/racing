@@ -1035,8 +1035,15 @@ function buildReplay(raceTrack, {
 		const animes = new AnimationGroup('animeFlyover');
 		animes.normalize(0, keys[keys.length - 1].frame);
 
+		// Point camera at front cars
+		const cars = raceTrack.cars.slice(0, 3);
+		const position = new Vector3(
+			cars.reduce((sum, car) => sum + car.posn[0].x, 0) / cars.length,
+			cars.reduce((sum, car) => sum + car.radius, 0) / cars.length,
+			cars.reduce((sum, car) => sum + car.posn[0].y, 0) / cars.length
+		);
 		cameras.filter(cam => cam.id === 'universalCameraA').forEach((cam) => {
-			cam.lockedTarget = plane.midpoint;
+			cam.lockedTarget = position;
 			animes.addTargetedAnimation(a, cam);
 		});
 
@@ -1187,7 +1194,7 @@ function buildReplay(raceTrack, {
 	// Add track flyover at start of video
 	((stage) => {
 		if (doExport) return; // Not yet ready for presentation
-		return;
+		return; // Not yet ready for presentation
 
 		// Get position frames
 		const flyoverPoints = raceTrack.gradients.filter(piece => piece.flyoverPoint);
