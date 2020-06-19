@@ -746,34 +746,13 @@ function closestPoint(pathNode, point) {
 // Define a custom Camera object with lots of customizations for us
 
 const RaceCamera = (() => {
-	function RaceCamera(cameraType = '', cameraArgs = []) {
-		this.φRange = [0, 2 * Math.PI];
+	function RaceCamera(cameraType = '', cameraArgs = [], {
+		φRange = [0, 2 * Math.PI],
+	} = {}) {
+		this.φRange = φRange;
 	}
 
 	Object.defineProperties(RaceCamera.prototype, {
-		sPosition: {
-			get() {
-				const p = [
-					this.position.x - plane.midpoint.x,
-					this.position.y - plane.midpoint.y,
-					this.position.z - plane.midpoint.z,
-				];
-				const r = Math.hypot(...p);
-				return {
-					r,
-					φ: p[x] === 0 ? 0 : Math.atan(p[z] / p[x]),
-					θ: p[y] === 0 ? 0 : Math.acos(Math.hypot(p[x] / r, p[z] / r) / p[y] / r),
-				};
-			},
-			set(...coords) {
-				const [r, φ, θ] = Array.isArray(coords[0]) ? coords[0] : coords;
-				this.position = new Vector3(
-					r * Math.sin(θ) * Math.cos(φ) + plane.midpoint.x,
-					r * Math.sin(θ) * Math.sin(φ) + plane.midpoint.z,
-					r * Math.cos(θ) + plane.midpoint.y
-				);
-			},
-		},
 	});
 
 	const fn = new Proxy(RaceCamera, {
@@ -874,7 +853,7 @@ function buildReplay(raceTrack, {
 					const r = Math.hypot(...p);
 					return {
 						r,
-						φ: p[x] === 0 ? 0 : Math.atan(p[z] / p[x]),
+						φ: p[x] === 0 ? 0 : Math.atan(p[z] / p[x]) + (p[x] < 0 ? Math.PI : 0),
 						θ: p[y] === 0 ? 0 : Math.acos(Math.hypot(p[x] / r, p[z] / r) / p[y] / r),
 					};
 				},
@@ -933,7 +912,9 @@ function buildReplay(raceTrack, {
 			'universalCamera3',
 			new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10),
 			scene,
-		]),
+		], {
+			φRange: [Math.PI / 2, 3 * Math.PI / 2],
+		}),
 		new RaceCamera('UniversalCamera', [
 			'universalCamera1',
 			new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]),
@@ -943,24 +924,22 @@ function buildReplay(raceTrack, {
 			'universalCamera2',
 			new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10),
 			scene,
-		]),
+		], {
+			φRange: [-Math.PI / 2, 25 * Math.PI / 180],
+		}),
 		new RaceCamera('UniversalCamera', [
 			'universalCamera4',
 			new Vector3(-35, 20, raceTrack.extrema[y][1] + 30),
 			scene,
-		]),
+		], {
+			φRange: [25 * Math.PI / 180, 3 * Math.PI / 4],
+		}),
 		new RaceCamera('UniversalCamera', [
 			'universalCameraA',
 			new Vector3(raceTrack.extrema[x][0] + 200, 20, raceTrack.extrema[y][0] - 10),
 			scene,
 		]),
 	];
-
-	/*
-	cameras.forEach((cam) => {
-		cam.attachControl(canvas, false);
-	});
-	/**/
 
 	// Define Surface Materials
 	const grass = new StandardMaterial('grass', scene);
@@ -1127,7 +1106,7 @@ function buildReplay(raceTrack, {
 	// Place cars in starting positions
 	cars.forEach((car) => {
 		const posn = car.posn[0];
-		car.sphere = MeshBuilder.CreateSphere('sphere', {
+		car.sphere = MeshBuilder.CreateSphere(`sphere${car.name}`, {
 			segments: 16,
 			diameter: car.radius * 2,
 		}, scene);
@@ -1400,6 +1379,8 @@ function buildReplay(raceTrack, {
 		return fn;
 	})(cars);
 
+	let raceCameraTarget;
+
 	// Build Replay Animation
 	if (cars[0].posn.length > 1) {
 		let lastTick = 0;
@@ -1505,19 +1486,19 @@ function buildReplay(raceTrack, {
 			numFrames = keys.reduce((n, f) => Math.max(n, f[f.length - 1].frame), numFrames);
 
 			// Build Mesh and Animation for cameras' target
-			const cameraTarget = new AbstractMesh('cameraTarget', scene);
+			raceCameraTarget = new AbstractMesh('raceCameraTarget', scene);
 			// Start cameras pointing at start of animation
-			cameraTarget.position = keys[0][0].value;
-			stages.race.cameras.forEach(camera => camera.lockedTarget = cameraTarget);
+			raceCameraTarget.position = keys[0][0].value;
+			stages.race.cameras.forEach(camera => camera.lockedTarget = raceCameraTarget);
 
 			cameras.filter(cam => cam.id === 'universalCameraA').forEach((cam) => {
-				cam.lockedTarget = cameraTarget;
+				cam.lockedTarget = raceCameraTarget;
 			});
 
 			// Set animation frame keys and add to group
 			animations.forEach((a, i) => {
 				a.setKeys(keys[i]);
-				stages.race.animes.addTargetedAnimation(a, cameraTarget);
+				stages.race.animes.addTargetedAnimation(a, raceCameraTarget);
 			});
 		})();
 
@@ -1761,8 +1742,23 @@ function buildReplay(raceTrack, {
 		}
 
 		// Change cameras during race
+		// TODO: Move to new function
 		if (stages[currentStage].rotateCamera === true && frame % stages[currentStage].framesToSwitchCameras === 0) {
-			n++;
+			if (raceCameraTarget instanceof AbstractMesh) {
+				console.log('Sam,', raceCameraTarget.id, (raceCameraTarget.sPosition.φ * 180 / Math.PI).toFixed(2));
+				const keyCurrentCamera = n;
+				const camera = scene.activeCamera;
+				do {
+					if (cameras[n % cameras.length].φRange[0] < raceCameraTarget.sPosition.φ
+						&& raceCameraTarget.sPosition.φ < cameras[n % cameras.length].φRange[1]) {
+						console.log('Sam, using camera', n % cameras.length);
+						break;
+					}
+					console.log('Sam, do not use camera', n % cameras.length);
+				} while (++n % cameras.length !== keyCurrentCamera % cameras.length);
+			} else {
+				n++;
+			}
 			// cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
 			scene.activeCamera = cameras[n % cameras.length];
 
