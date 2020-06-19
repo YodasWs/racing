@@ -747,7 +747,7 @@ function closestPoint(pathNode, point) {
 
 const RaceCamera = (() => {
 	function RaceCamera(cameraType = '', cameraArgs = [], {
-		φRange = [0, 2 * Math.PI],
+		φRange = [-Math.PI / 2, 3 * Math.PI / 2],
 	} = {}) {
 		this.φRange = φRange;
 	}
@@ -910,10 +910,10 @@ function buildReplay(raceTrack, {
 	const cameras = [
 		new RaceCamera('UniversalCamera', [
 			'universalCamera3',
-			new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10),
+			new Vector3(raceTrack.extrema[x][0], 20, raceTrack.extrema[y][0] - 30),
 			scene,
 		], {
-			φRange: [Math.PI / 2, 3 * Math.PI / 2],
+			φRange: [150 * Math.PI / 180, 3 * Math.PI / 2],
 		}),
 		new RaceCamera('UniversalCamera', [
 			'universalCamera1',
@@ -925,14 +925,14 @@ function buildReplay(raceTrack, {
 			new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10),
 			scene,
 		], {
-			φRange: [-Math.PI / 2, 25 * Math.PI / 180],
+			φRange: [-Math.PI / 2, 10 * Math.PI / 180],
 		}),
 		new RaceCamera('UniversalCamera', [
 			'universalCamera4',
-			new Vector3(-35, 20, raceTrack.extrema[y][1] + 30),
+			new Vector3(-50, 20, raceTrack.extrema[y][1] + 70),
 			scene,
 		], {
-			φRange: [25 * Math.PI / 180, 3 * Math.PI / 4],
+			φRange: [0 * Math.PI / 180, 125 * Math.PI / 180],
 		}),
 		new RaceCamera('UniversalCamera', [
 			'universalCameraA',
@@ -1313,6 +1313,7 @@ function buildReplay(raceTrack, {
 			}, 500 * targetFrameRate / renderFrameRate);
 		};
 
+		// TODO: Switch to animation events
 		stage.onEndStage = () => {
 			if (countdown) {
 				fnUpdateCountDown(); // Go!
@@ -1749,13 +1750,14 @@ function buildReplay(raceTrack, {
 				const keyCurrentCamera = n;
 				const camera = scene.activeCamera;
 				do {
-					if (cameras[n % cameras.length].φRange[0] < raceCameraTarget.sPosition.φ
+					n++;
+					if (cameras[n % cameras.length].φRange[0] <= raceCameraTarget.sPosition.φ
 						&& raceCameraTarget.sPosition.φ < cameras[n % cameras.length].φRange[1]) {
 						console.log('Sam, using camera', n % cameras.length);
 						break;
 					}
 					console.log('Sam, do not use camera', n % cameras.length);
-				} while (++n % cameras.length !== keyCurrentCamera % cameras.length);
+				} while (n % cameras.length !== keyCurrentCamera % cameras.length);
 			} else {
 				n++;
 			}
