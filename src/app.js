@@ -746,7 +746,7 @@ function closestPoint(pathNode, point) {
 // Define a custom Camera object with lots of customizations for us
 
 const RaceCamera = (() => {
-	function RaceCamera(cameraType, ...args) {
+	function RaceCamera(cameraType = '', cameraArgs = []) {
 		this.φRange = [0, 2 * Math.PI];
 	}
 
@@ -792,9 +792,10 @@ const RaceCamera = (() => {
 			this.apply(target, obj, args);
 			return obj;
 		},
-		apply(target, that, [cameraType, ...args]) {
-			BABYLON[cameraType].apply(that, args);
-			return target.apply(that, [cameraType, ...args]);
+		apply(target, that, args) {
+			const [cameraType, cameraArgs] = args;
+			BABYLON[cameraType].apply(that, cameraArgs);
+			return target.apply(that, args);
 		},
 	});
 	return fn;
@@ -923,16 +924,36 @@ function buildReplay(raceTrack, {
 	sun.diffuse = new Color3(1, 1, 1);
 	sun.intensity = 0.5;
 
-	// TODO: Give each camera one or more of:
-	// 1. bounding box for which cameraTarget must be for camera to be used
-	// 2. maximum distance between camera and cameraTarget for camera to be used
+	// TODO: To help determine if camera can be used, give each camera one or more of:
+	// 1. bounding box which cameraTarget must be in
+	// 2. maximum distance between camera and cameraTarget
+	// 3. range of acceptable cameraTarget.sPosition.φ values
 	const cameras = [
-		// new ArcRotateCamera('arc', -Math.PI / 2, 7 * Math.PI / 16, 100, new Vector3(0, 0, 0), scene),
-		new RaceCamera('UniversalCamera', 'universalCamera3', new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10), scene),
-		new RaceCamera('UniversalCamera', 'universalCamera1', new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]), scene),
-		new RaceCamera('UniversalCamera', 'universalCamera2', new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10), scene),
-		new RaceCamera('UniversalCamera', 'universalCamera4', new Vector3(-35, 20, raceTrack.extrema[y][1] + 30), scene),
-		new RaceCamera('UniversalCamera', 'universalCameraA', new Vector3(raceTrack.extrema[x][0] + 200, 20, raceTrack.extrema[y][0] - 10), scene),
+		new RaceCamera('UniversalCamera', [
+			'universalCamera3',
+			new Vector3(raceTrack.extrema[x][0] - 10, 20, raceTrack.extrema[y][0] - 10),
+			scene,
+		]),
+		new RaceCamera('UniversalCamera', [
+			'universalCamera1',
+			new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]),
+			scene,
+		]),
+		new RaceCamera('UniversalCamera', [
+			'universalCamera2',
+			new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10),
+			scene,
+		]),
+		new RaceCamera('UniversalCamera', [
+			'universalCamera4',
+			new Vector3(-35, 20, raceTrack.extrema[y][1] + 30),
+			scene,
+		]),
+		new RaceCamera('UniversalCamera', [
+			'universalCameraA',
+			new Vector3(raceTrack.extrema[x][0] + 200, 20, raceTrack.extrema[y][0] - 10),
+			scene,
+		]),
 	];
 
 	/*
