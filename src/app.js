@@ -7,6 +7,7 @@ const radius = 4.5;
 const strokeWidth = 1;
 
 const TrackPiece = require('../src/js/TrackPiece');
+const Car = require('../src/js/Car');
 
 yodasws.page('home').setRoute({
 	template: 'pages/home.html',
@@ -650,34 +651,6 @@ Object.defineProperties(RaceTrack.prototype, {
 			return this;
 		},
 	},
-});
-
-function Car(name, options = {}) {
-	Object.assign(this, {
-		strokeWidth: 1,
-		r: 4,
-	}, options, {
-		trackAhead: [],
-		nextPiece: false,
-		previousPiece: false,
-		lapTimes: [],
-		time: [],
-		posn: [],
-	});
-
-
-	Object.defineProperties(this, {
-		name: {
-			enumerable: true,
-			get: () => name,
-		},
-		radius: {
-			enumerable: true,
-			get: () => this.r + this.strokeWidth / 2,
-		},
-	});
-}
-Object.defineProperties(Car.prototype, {
 });
 
 function closestPoint(pathNode, point) {
