@@ -1127,6 +1127,34 @@ function buildReplay(raceTrack, {
 
 	scene.activeCamera = cameras[0];
 
+	function pickNextCamera() {
+		// Change cameras during race
+		if (stages[currentStage].rotateCamera === true && frame % stages[currentStage].framesToSwitchCameras === 0) {
+			if (raceCameraTarget instanceof AbstractMesh) {
+				// console.log('Sam,', raceCameraTarget.id, (raceCameraTarget.sPosition.φ * 180 / Math.PI).toFixed(2));
+				const keyCurrentCamera = n;
+				const camera = scene.activeCamera;
+				do {
+					n++;
+					if (cameras[n % cameras.length].φRange[0] <= raceCameraTarget.sPosition.φ
+						&& raceCameraTarget.sPosition.φ < cameras[n % cameras.length].φRange[1]) {
+						// console.log('Sam, using camera', n % cameras.length);
+						break;
+					}
+					// console.log('Sam, do not use camera', n % cameras.length);
+				} while (n % cameras.length !== keyCurrentCamera % cameras.length);
+			} else {
+				n++;
+			}
+			// cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
+			scene.activeCamera = cameras[n % cameras.length];
+
+			if (n % cameras.length == 0) {
+				k++;
+			}
+		}
+	}
+
 	const videoWriter = ((doExport) => {
 		if (doExport) {
 			return new WebMWriter({
@@ -1212,36 +1240,11 @@ function buildReplay(raceTrack, {
 			stages[currentStage].overlay.render(frame / df);
 		}
 
-		// Change cameras during race
-		// TODO: Move to new function
-		if (stages[currentStage].rotateCamera === true && frame % stages[currentStage].framesToSwitchCameras === 0) {
-			if (raceCameraTarget instanceof AbstractMesh) {
-				console.log('Sam,', raceCameraTarget.id, (raceCameraTarget.sPosition.φ * 180 / Math.PI).toFixed(2));
-				const keyCurrentCamera = n;
-				const camera = scene.activeCamera;
-				do {
-					n++;
-					if (cameras[n % cameras.length].φRange[0] <= raceCameraTarget.sPosition.φ
-						&& raceCameraTarget.sPosition.φ < cameras[n % cameras.length].φRange[1]) {
-						console.log('Sam, using camera', n % cameras.length);
-						break;
-					}
-					console.log('Sam, do not use camera', n % cameras.length);
-				} while (n % cameras.length !== keyCurrentCamera % cameras.length);
-			} else {
-				n++;
-			}
-			// cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
-			scene.activeCamera = cameras[n % cameras.length];
-
-			if (n % cameras.length == 0) {
-				k++;
-			}
-		}
+		pickNextCamera();
 
 		frame++;
 
-		if (frame % 10 === 0 && doExport) console.log('Sam, frame', frame, ',', (frame / targetFrameRate).toFixed(3), 'seconds');
+		if (frame % 20 === 0 && doExport) console.log('Sam, frame', frame, ',', (frame / targetFrameRate).toFixed(3), 'seconds');
 
 		let endVideo = false;
 
@@ -1278,6 +1281,8 @@ function buildReplay(raceTrack, {
 					} else {
 						window.open(videoUrl, '_blank');
 					}
+				}).catch((e) => {
+					console.error('Sam, videoWriter failed:', e);
 				});
 			} else {
 				getRaceState.reset();

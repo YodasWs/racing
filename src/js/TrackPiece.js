@@ -1,5 +1,5 @@
-const gravity = 1 / 8;
-const correctiveStrength = 1 / 40;
+const gravity = 1 / 7;
+const correctiveStrength = 1 / 50;
 const x = 0;
 const y = 1;
 const z = 2;
