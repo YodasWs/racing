@@ -213,41 +213,67 @@ yodasws.page('home').setRoute({
 	});
 });
 
-// Define a custom Camera object with lots of customizations for us
+// Define a custom EventTarget to help with picking cameras through the video
+const RaceEvents = (() => {
+	const et = new EventTarget();
+	const φListeners = new Set();
+	let oldφ;
+	et.addφListener = (φ, callback) => {
+		φListeners.add(φ);
+		et.addEventListener('φChange', (evt) => {
+			if (evt.detail.φ === φ) callback(evt);
+		});
+	};
+	et.φChange = (newφ, callback) => {
+		// Dispatch event for RaceCameras to listen to
+		φListeners.forEach((φ) => {
+			if (oldφ <= φ && φ < newφ) {
+				et.dispatchEvent(new CustomEvent('φChange', {
+					detail: {
+						φ,
+					},
+				}));
+			}
+		});
+		oldφ = newφ;
+	};
+	return et;
+})();
 
+// Define a custom Camera object with lots of customizations for us
 const RaceCamera = (() => {
 	function RaceCamera(cameraType = '', cameraArgs = [], {
 		φRange = [-Math.PI / 2, 3 * Math.PI / 2],
 	} = {}) {
 		this.φRange = φRange;
+		this.uuid = Math.floor(Math.random() * 1e3).toString().padStart(3, '0');
 	}
 
-	Object.defineProperties(RaceCamera.prototype, {
-	});
+	const prototype = {
+		setφToActivateCamera: {
+			value(φ) {
+				RaceEvents.addφListener(φ, (e) => {
+					scene.activeCamera = this;
+				});
+			},
+		},
+	};
 
-	const fn = new Proxy(RaceCamera, {
+	return new Proxy(RaceCamera, {
 		construct(target, args) {
-			const cameraType = args[0];
+			const [cameraType, cameraArgs] = args;
 			const Camera = BABYLON[cameraType];
 			if (!Camera) throw new TypeError(`Unknown camera type '${cameraType}'`);
 			if (!(Camera.prototype instanceof BABYLON.TargetCamera))
 				throw new TypeError(`Invalid camera type '${cameraType}'`);
 
-			const NewRaceCamera = Object.create(target);
-			NewRaceCamera.prototype = Object.create(Camera.prototype);
-			NewRaceCamera.prototype.constructor = RaceCamera;
-
-			const obj = Object.create(NewRaceCamera.prototype);
-			this.apply(target, obj, args);
-			return obj;
-		},
-		apply(target, that, args) {
-			const [cameraType, cameraArgs] = args;
-			BABYLON[cameraType].apply(that, cameraArgs);
-			return target.apply(that, args);
+			const camera = Object.create(Camera.prototype);
+			Camera.apply(camera, cameraArgs);
+			target.apply(camera, args);
+			Object.defineProperties(camera.__proto__, prototype);
+			return camera;
 		},
 	});
-	return fn;
 })();
 
 /* Documentation:
@@ -391,7 +417,7 @@ function buildReplay(raceTrack, {
 			scene,
 		]),
 		new RaceCamera('UniversalCamera', [
-			'universalCamera2',
+			'cameraTopRightCorner',
 			new Vector3(raceTrack.extrema[x][1] + 10, 20, raceTrack.extrema[y][0] - 10),
 			scene,
 		], {
@@ -410,6 +436,7 @@ function buildReplay(raceTrack, {
 			scene,
 		]),
 	];
+	cameras.find(cam => cam.id === 'cameraTopRightCorner').setφToActivateCamera(0);
 
 	// Define Surface Materials
 	const grass = new StandardMaterial('grass', scene);
@@ -1261,6 +1288,9 @@ function buildReplay(raceTrack, {
 		}
 
 		CameraPicker.pickNextCamera();
+		if (raceCameraTarget instanceof AbstractMesh) {
+			RaceEvents.φChange(raceCameraTarget.sPosition.φ);
+		}
 
 		frame++;
 
