@@ -1127,33 +1127,56 @@ function buildReplay(raceTrack, {
 
 	scene.activeCamera = cameras[0];
 
-	function pickNextCamera() {
-		// Change cameras during race
-		if (stages[currentStage].rotateCamera === true && frame % stages[currentStage].framesToSwitchCameras === 0) {
-			if (raceCameraTarget instanceof AbstractMesh) {
-				// console.log('Sam,', raceCameraTarget.id, (raceCameraTarget.sPosition.φ * 180 / Math.PI).toFixed(2));
-				const keyCurrentCamera = n;
-				const camera = scene.activeCamera;
-				do {
-					n++;
-					if (cameras[n % cameras.length].φRange[0] <= raceCameraTarget.sPosition.φ
-						&& raceCameraTarget.sPosition.φ < cameras[n % cameras.length].φRange[1]) {
-						// console.log('Sam, using camera', n % cameras.length);
-						break;
-					}
-					// console.log('Sam, do not use camera', n % cameras.length);
-				} while (n % cameras.length !== keyCurrentCamera % cameras.length);
-			} else {
-				n++;
-			}
-			// cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
-			scene.activeCamera = cameras[n % cameras.length];
+	const CameraPicker = (() => {
+		let n = 1;
 
-			if (n % cameras.length == 0) {
-				k++;
+		function setActiveCamera(newActiveCameraIndex) {
+			if (!Number.isInteger(newActiveCameraIndex) || newActiveCameraIndex < 0) {
+				throw new TypeError('newActiveCameraIndex must be a nonnegative integer');
+			}
+			n = newActiveCameraIndex;
+			scene.activeCamera = cameras[newActiveCameraIndex % cameras.length];
+		}
+
+		stages.race.animes.onAnimationGroupPlayObservable.add(() => {
+			n = 0;
+		});
+		stages.race.animes.onAnimationGroupEndObservable.add(() => {
+			n = 0;
+		});
+
+		function pickNextCamera() {
+			// Change cameras during race
+			if (stages[currentStage].rotateCamera === true && frame % stages[currentStage].framesToSwitchCameras === 0) {
+				if (raceCameraTarget instanceof AbstractMesh) {
+					// console.log('Sam,', raceCameraTarget.id, (raceCameraTarget.sPosition.φ * 180 / Math.PI).toFixed(2));
+					const keyCurrentCamera = n;
+					const camera = scene.activeCamera;
+					do {
+						n++;
+						if (cameras[n % cameras.length].φRange[0] <= raceCameraTarget.sPosition.φ
+							&& raceCameraTarget.sPosition.φ < cameras[n % cameras.length].φRange[1]) {
+							// console.log('Sam, using camera', n % cameras.length);
+							break;
+						}
+						// console.log('Sam, do not use camera', n % cameras.length);
+					} while (n % cameras.length !== keyCurrentCamera % cameras.length);
+				} else {
+					n++;
+				}
+				// cameras[++n % cameras.length].lockedTarget = cars[k % cars.length].sphere;
+				setActiveCamera(n);
+
+				if (n % cameras.length == 0) {
+					k++;
+				}
 			}
 		}
-	}
+
+		return {
+			pickNextCamera,
+		};
+	})();
 
 	const videoWriter = ((doExport) => {
 		if (doExport) {
@@ -1173,7 +1196,6 @@ function buildReplay(raceTrack, {
 
 	let frame = 0;
 	let k = 0;
-	let n = 1;
 
 	Object.entries(stages).forEach(([key, stage]) => {
 		if (Number.isFinite(stage.secondsToSwitchCameras)) {
@@ -1214,14 +1236,12 @@ function buildReplay(raceTrack, {
 		currentStage = 'race';
 		frame = 0;
 		k = 0;
-		n = 0;
 	});
 
 	stages.race.animes.onAnimationGroupEndObservable.add(() => {
 		currentStage = 'afterRace';
 		frame = 0;
 		k = 0;
-		n = 0;
 		numFrames = stages.afterRace.playTime * targetFrameRate;
 		stages.events.dispatchEvent(new CustomEvent('end', { detail: 'race' }));
 	});
@@ -1240,7 +1260,7 @@ function buildReplay(raceTrack, {
 			stages[currentStage].overlay.render(frame / df);
 		}
 
-		pickNextCamera();
+		CameraPicker.pickNextCamera();
 
 		frame++;
 
