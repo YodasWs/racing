@@ -390,9 +390,6 @@ function runTasks(task) {
 		}
 	});
 
-	// Init Sourcemaps
-	// stream = stream.pipe(plugins.sourcemaps.init());
-
 	// Run each task
 	if (tasks.length) for (let i=0, k=tasks.length; i<k; i++) {
 		if (['lintSass', 'lintES'].includes(tasks[i])) continue;
@@ -400,9 +397,6 @@ function runTasks(task) {
 		if (option[fileType]) option = option[fileType];
 		stream = stream.pipe(plugins[tasks[i]](option));
 	}
-
-	// Write Sourcemap
-	// stream = stream.pipe(plugins.sourcemaps.write());
 
 	// Output Files
 	return stream.pipe(gulp.dest(task.dest || options.dest));
