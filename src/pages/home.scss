@@ -1,6 +1,9 @@
 [y-page="home"] {
-	> ol {
+	> .aside {
 		float: right;
+	}
+
+	ol {
 		margin-top: 0;
 		padding-left: 0;
 		border: 1px solid black;

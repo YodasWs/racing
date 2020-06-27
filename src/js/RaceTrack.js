@@ -406,6 +406,7 @@ Object.defineProperties(RaceTrack.prototype, {
 		value() {
 			let leadPosition = [];
 
+			const outputLaps = document.querySelector('output#lapCount');
 			const ol = document.querySelector('ol#positions');
 			this.cars.slice().sort((a, b) => {
 				if (a.time.length === 0 && b.time.length === 0) return 0;
@@ -438,6 +439,7 @@ Object.defineProperties(RaceTrack.prototype, {
 					// Get times of the lead car
 					if (i === 0) {
 						leadPosition = car.time.slice();
+						outputLaps.innerHTML = `Lap ${car.lapTimes.length} of ${this.laps}`;
 					}
 
 					const elTime = li.querySelector('.time');
