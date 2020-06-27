@@ -138,7 +138,9 @@ Object.defineProperties(RaceTrack.prototype, {
 				document.querySelector('canvas#replay').removeAttribute('hidden');
 				/**/
 
-				buildReplay(this);
+				window.dispatchEvent(new CustomEvent('raceEnd', {
+					detail: [this],
+				}));
 				return;
 			}
 			return this;

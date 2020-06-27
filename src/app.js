@@ -276,6 +276,12 @@ const RaceCamera = (() => {
 	});
 })();
 
+window.addEventListener('raceEnd', (evt) => {
+	if (Array.isArray(evt.detail) && evt.detail[0] instanceof RaceTrack) {
+		buildReplay(...evt.detail);
+	}
+});
+
 /* Documentation:
  * https://doc.babylonjs.com/babylon101/discover_basic_elements
  * https://doc.babylonjs.com/api/globals
@@ -284,7 +290,7 @@ const RaceCamera = (() => {
 let aniInterval;
 
 function buildReplay(raceTrack, {
-	OverheadCirclingSpeed = 5,
+	OverheadCirclingSpeed = 5, // Frames per degree
 	filmCountdownOnly = false,
 	doExport = false,
 	targetFrameRate = 30,
@@ -942,7 +948,7 @@ function buildReplay(raceTrack, {
 				btn.setAttribute('disabled', 'disabled');
 				clearInterval(aniInterval);
 				buildReplay(raceTrack, {
-					OverheadCirclingSpeed: 2.5,
+					OverheadCirclingSpeed: 4, // Frames per degree
 					doExport: true,
 					targetFrameRate: 60,
 					renderFrameRate: 2,
