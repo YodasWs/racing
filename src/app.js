@@ -537,7 +537,7 @@ function buildReplay(raceTrack, {
 			cars.reduce((sum, car) => sum + car.radius, 0) / cars.length,
 			cars.reduce((sum, car) => sum + car.posn[0].y, 0) / cars.length
 		);
-		cameras.filter(cam => cam.id === 'universalCameraA').forEach((cam) => {
+		cameras.forEach((cam) => {
 			cam.lockedTarget = position;
 			animes.addTargetedAnimation(a, cam);
 		});
@@ -882,7 +882,7 @@ function buildReplay(raceTrack, {
 		let lastTick = 0;
 
 		const TwoPi = Math.PI * 2;
-		cars.forEach((car, i) => {
+		cars.forEach((car) => {
 			let zr = 0;
 			let yr = 0;
 
@@ -894,9 +894,10 @@ function buildReplay(raceTrack, {
 			animations.forEach(a => keys.push([]));
 
 			car.posn.forEach((frame) => {
+				const numFrame = frame.tick * df;
 				// Animate car positions
 				keys[0].push({
-					frame: frame.tick * df,
+					frame: numFrame,
 					value: new Vector3(frame.x, car.radius, frame.y),
 				});
 				// Animate car rotation
@@ -913,7 +914,7 @@ function buildReplay(raceTrack, {
 					zr -= v * Math.PI / 16;
 				}
 				keys[1].push({
-					frame: frame.tick * df,
+					frame: numFrame,
 					value: new Vector3(0, yr, zr),
 				});
 
@@ -1143,7 +1144,8 @@ function buildReplay(raceTrack, {
 
 		stage.overlay.render = () => {
 			// Sort cars in order of race position
-			getRaceState(numFrames / df).forEach((car, i) => {
+			const maxTick = lCars.reduce((tick, c) => Math.max(tick, c.lapTimes[c.lapTimes.length - 1].tick), 0);
+			getRaceState(maxTick).forEach((car, i) => {
 				// Draw names on screen overlay
 				txtCarsPositions[i].text = `${i + 1} ${car.name}`;
 			});
