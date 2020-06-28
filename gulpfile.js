@@ -391,12 +391,14 @@ function runTasks(task) {
 	});
 
 	// Run each task
-	if (tasks.length) for (let i=0, k=tasks.length; i<k; i++) {
-		if (['lintSass', 'lintES'].includes(tasks[i])) continue;
-		let option = options[tasks[i]] || {};
+	if (tasks.length) tasks.forEach((subtask) => {
+		if (['lintSass', 'lintES'].includes(subtask)) return;
+		let option = options[subtask] || {};
 		if (option[fileType]) option = option[fileType];
-		stream = stream.pipe(plugins[tasks[i]](option));
-	}
+		stream = stream.pipe(plugins[subtask](option)).on('error', function () {
+			this.emit('end');
+		});
+	});
 
 	// Output Files
 	return stream.pipe(gulp.dest(task.dest || options.dest));
