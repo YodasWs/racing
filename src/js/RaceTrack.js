@@ -285,34 +285,43 @@ Object.defineProperties(RaceTrack.prototype, {
 				// y - y1 = m (x - x1); y = mx - mx1 + y1
 				grad.b = -grad.m * points.x1 + points.y1;
 
+				grad.rail.forEach((r, i, a) => {
+					if (typeof r === 'number') a[i] = [r, r];
+				});
+
+				const left = 0;
+				const right = 1;
+				const before = 0;
+				const after = 1;
+
 				// Draw line
 				const elLine = document.createElementNS(SVG, 'line');
-				railPoints[0].push({
+				railPoints[left].push({
 					before: [
-						points.x1 - grad.width * Math.cos(α) * grad.rail[0],
-						points.y1 - grad.width * Math.sin(α) * grad.rail[0],
+						points.x1 - grad.width * Math.cos(α) * grad.rail[left][before],
+						points.y1 - grad.width * Math.sin(α) * grad.rail[left][before],
 					],
 					is: [
 						points.x1,
 						points.y1,
 					],
 					after: [
-						points.x1 + grad.width * Math.cos(α) * grad.rail[0],
-						points.y1 + grad.width * Math.sin(α) * grad.rail[0],
+						points.x1 + grad.width * Math.cos(α) * grad.rail[left][after],
+						points.y1 + grad.width * Math.sin(α) * grad.rail[left][after],
 					],
 				});
-				railPoints[1].push({
+				railPoints[right].push({
 					before: [
-						points.x2 - grad.width * Math.cos(α) * grad.rail[1],
-						points.y2 - grad.width * Math.sin(α) * grad.rail[1],
+						points.x2 - grad.width * Math.cos(α) * grad.rail[right][before],
+						points.y2 - grad.width * Math.sin(α) * grad.rail[right][before],
 					],
 					is: [
 						points.x2,
 						points.y2,
 					],
 					after: [
-						points.x2 + grad.width * Math.cos(α) * grad.rail[1],
-						points.y2 + grad.width * Math.sin(α) * grad.rail[1],
+						points.x2 + grad.width * Math.cos(α) * grad.rail[right][after],
+						points.y2 + grad.width * Math.sin(α) * grad.rail[right][after],
 					],
 				});
 

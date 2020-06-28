@@ -94,14 +94,6 @@ yodasws.page('home').setRoute({
 			rail: [1, 1/4],
 		},
 	];
-	/**/
-
-	json.cSuzuka.forEach((piece) => {
-		piece.delta = piece.delta.map(a => a * 2);
-		if (Array.isArray(piece.rail)) {
-			piece.rail = piece.rail.map(a => a * 1.5);
-		}
-	});
 
 	let raceTrack = new RaceTrack(svg, json.cSuzuka.map(piece => new TrackPiece(piece)), [
 		new Car('Alice, TX', {
@@ -109,12 +101,12 @@ yodasws.page('home').setRoute({
 			color2: 'orange',
 			rgb: [0x90, 0xee, 0x90],
 		}),
-		new Car('Dallas, TX', {
+		new Car('Brooklyn, NY', {
 			color: 'white',
-			color2: 'blue',
+			color2: 'black',
 			r: 3,
 			strokeWidth: 3,
-			rgb: [0, 0, 0xff],
+			rgb: [0x44, 0x44, 0x44],
 		}),
 		new Car('Charlotte, NC', {
 			color: '#249E57',
@@ -123,12 +115,12 @@ yodasws.page('home').setRoute({
 			strokeWidth: 2,
 			rgb: [0x24, 0x9E, 0x57],
 		}),
-		new Car('Brooklyn, NY', {
+		new Car('Dallas, TX', {
 			color: 'white',
-			color2: 'black',
+			color2: 'blue',
 			r: 3,
 			strokeWidth: 3,
-			rgb: [0x44, 0x44, 0x44],
+			rgb: [0, 0, 0xff],
 		}),
 		new Car('Edison, NJ', {
 			color: 'lightblue',
@@ -144,7 +136,7 @@ yodasws.page('home').setRoute({
 			strokeWidth: 2,
 			rgb: [0xBF, 0x1F, 0x2D],
 		}),
-	], {
+	].sort(() => Math.sign(Math.random() * 2 - 1)), {
 		laps: 10,
 	});
 
@@ -554,7 +546,7 @@ function buildReplay(raceTrack, {
 	})();
 
 	// Build the track
-	const precision = 100;
+	const precision = 500;
 	const trackArray = [[], []];
 	const railArray = [[], []];
 	raceTrack.rails.forEach((rail, i) => {
