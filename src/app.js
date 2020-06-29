@@ -537,7 +537,7 @@ function buildReplay(raceTrack, {
 			cars.reduce((sum, car) => sum + car.radius, 0) / cars.length,
 			cars.reduce((sum, car) => sum + car.posn[0].y, 0) / cars.length
 		);
-		cameras.forEach((cam) => {
+		cameras.filter(cam => cam.id === 'universalCameraA').forEach((cam) => {
 			cam.lockedTarget = position;
 			animes.addTargetedAnimation(a, cam);
 		});
