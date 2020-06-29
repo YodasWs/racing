@@ -1,193 +1,204 @@
-[
-	{
-		"gradient": [1, 0],
-		"delta": [0, 0],
-		"width": 20,
-		"color": "black",
-		"flyoverPoint": true
-	},
-	{
-		"gradient": [1, 0],
-		"delta": [150, 0],
-		"width": 20,
-		"rail": [
-			[0.5, 1.75],
-			[0.25, 0.75]
-		],
-		"flyoverPoint": true
-	},
-	{
-		"gradient": [1, 2],
-		"delta": [50, 30],
-		"width": 20,
-		"rail": [
-			[1, 1],
-			[0.6, 0.25]
-		]
-	},
-	{
-		"gradient": [1, 2],
-		"delta": [30, 60],
-		"width": 20,
-		"rail": [0.5, 0.25]
-	},
-	{
-		"gradient": [0, 1],
-		"delta": [8, 30],
-		"width": 20,
-		"rail": [
-			[0.5, 0.1],
-			[0.25, 0.1]
-		]
-	},
-	{
-		"gradient": [0, 1],
-		"delta": [0, 20],
-		"width": 20,
-		"rail": [
-			[1.5, 2.5],
-			[0.125, 0.75]
-		],
-		"flyoverPoint": true
-	},
-	{
-		"gradient": [-1, 0],
-		"delta": [-50, 50],
-		"width": 20,
-		"rail": [
-			[1.5, 1.5],
-			[1, 0.125]
-		]
-	},
-	{
-		"gradient": [-5, -1],
-		"delta": [-60, -10],
-		"width": 20,
-		"rail": [
-			[0.25, 1.2],
-			[0.25, 2.5]
-		]
-	},
-	{
-		"gradient": [-2, 3],
-		"delta": [-70, 40],
-		"width": 20,
-		"rail": [
-			[0.5, 2],
-			[0.75, 1.5]
-		]
-	},
-	{
-		"gradient": [-3, -2],
-		"delta": [-70, 20],
-		"width": 20,
-		"rail": [
-			[2, 0.5],
-			[0.25, 0.16667]
-		],
-		"flyoverPoint": true
-	},
-	{
-		"gradient": [-3, -2],
-		"delta": [-60, -40],
-		"width": 20,
-		"rail": [
-			[0.25, 0.5],
-			[1, 2]
-		]
-	},
-	{
-		"gradient": [-2, 3],
-		"delta": [-70, 10],
-		"width": 20,
-		"rail": [
-			[1, 0.25],
-			[1.5, 0.1]
-		]
-	},
-	{
-		"gradient": [-2, 3],
-		"delta": [-10, 15],
-		"width": 20,
-		"rail": [
-			[0.1, 2],
-			[0.1, 1]
-		]
-	},
-	{
-		"gradient": [-3, -2],
-		"delta": [-70, 20],
-		"width": 20,
-		"rail": [
-			[1.5, 0.25],
-			[0.6, 0.25]
-		]
-	},
-	{
-		"gradient": [-3, -2],
-		"delta": [-60, -40],
-		"width": 20,
-		"rail": [
-			[0.25, 1],
-			[0.25, 2]
-		]
-	},
-	{
-		"gradient": [-1, 0],
-		"delta": [-60, -25],
-		"width": 20,
-		"rail": [
-			[0.7, 1],
-			[1, 2]
-		]
-	},
-	{
-		"gradient": [-1, 1],
-		"delta": [-55, 20],
-		"width": 20,
-		"rail": [
-			[0.2, 0.2],
-			[0.75, 1]
-		]
-	},
-	{
-		"gradient": [-1, 0],
-		"delta": [-70, 40],
-		"width": 20,
-		"rail": [
-			[2, 2.5],
-			[1, 1.5]
-		],
-		"flyoverPoint": true
-	},
-	{
-		"gradient": [0, -1],
-		"delta": [-80, -70],
-		"width": 20,
-		"rail": [
-			[3, 1.2],
-			[1.7, 0.75]
-		]
-	},
-	{
-		"gradient": [0, -1],
-		"delta": [0, -80],
-		"width": 20,
-		"rail": [
-			[1, 3],
-			[1, 2]
-		],
-		"color": "lightgreen",
-		"flyoverPoint": true
-	},
-	{
-		"gradient": [1, 0],
-		"delta": [90, -90],
-		"width": 20,
-		"rail": [
-			[3, 1],
-			[2, 1]
-		],
-		"flyoverPoint": true
+{
+	"trackPieces": [
+		{
+			"gradient": [1, 0],
+			"delta": [0, 0],
+			"width": 20,
+			"color": "black",
+			"flyoverPoint": true
+		},
+		{
+			"gradient": [1, 0],
+			"delta": [150, 0],
+			"width": 20,
+			"rail": [
+				[0.5, 1.75],
+				[0.25, 0.75]
+			],
+			"flyoverPoint": true
+		},
+		{
+			"gradient": [1, 2],
+			"delta": [50, 30],
+			"width": 20,
+			"rail": [
+				[1, 1],
+				[0.6, 0.25]
+			]
+		},
+		{
+			"gradient": [1, 2],
+			"delta": [30, 60],
+			"width": 20,
+			"rail": [0.5, 0.25]
+		},
+		{
+			"gradient": [0, 1],
+			"delta": [8, 30],
+			"width": 20,
+			"rail": [
+				[0.5, 0.1],
+				[0.25, 0.1]
+			]
+		},
+		{
+			"gradient": [0, 1],
+			"delta": [0, 20],
+			"width": 20,
+			"rail": [
+				[1.5, 2.5],
+				[0.125, 0.75]
+			],
+			"flyoverPoint": true
+		},
+		{
+			"gradient": [-1, 0],
+			"delta": [-50, 50],
+			"width": 20,
+			"rail": [
+				[1.5, 1.5],
+				[1, 0.125]
+			]
+		},
+		{
+			"gradient": [-5, -1],
+			"delta": [-60, -10],
+			"width": 20,
+			"rail": [
+				[0.25, 1.2],
+				[0.25, 2.5]
+			]
+		},
+		{
+			"gradient": [-2, 3],
+			"delta": [-70, 40],
+			"width": 20,
+			"rail": [
+				[0.5, 2],
+				[0.75, 1.5]
+			]
+		},
+		{
+			"gradient": [-3, -2],
+			"delta": [-70, 20],
+			"width": 20,
+			"rail": [
+				[2, 0.5],
+				[0.25, 0.16667]
+			],
+			"flyoverPoint": true
+		},
+		{
+			"gradient": [-3, -2],
+			"delta": [-60, -40],
+			"width": 20,
+			"rail": [
+				[0.25, 0.5],
+				[1, 2]
+			]
+		},
+		{
+			"gradient": [-2, 3],
+			"delta": [-70, 10],
+			"width": 20,
+			"rail": [
+				[1, 0.25],
+				[1.5, 0.1]
+			]
+		},
+		{
+			"gradient": [-2, 3],
+			"delta": [-10, 15],
+			"width": 20,
+			"rail": [
+				[0.1, 2],
+				[0.1, 1]
+			]
+		},
+		{
+			"gradient": [-3, -2],
+			"delta": [-70, 20],
+			"width": 20,
+			"rail": [
+				[1.5, 0.25],
+				[0.6, 0.25]
+			]
+		},
+		{
+			"gradient": [-3, -2],
+			"delta": [-60, -40],
+			"width": 20,
+			"rail": [
+				[0.25, 1],
+				[0.25, 2]
+			]
+		},
+		{
+			"gradient": [-1, 0],
+			"delta": [-60, -25],
+			"width": 20,
+			"rail": [
+				[0.7, 1],
+				[1, 2]
+			]
+		},
+		{
+			"gradient": [-1, 1],
+			"delta": [-55, 20],
+			"width": 20,
+			"rail": [
+				[0.2, 0.2],
+				[0.75, 1]
+			]
+		},
+		{
+			"gradient": [-1, 0],
+			"delta": [-70, 40],
+			"width": 20,
+			"rail": [
+				[2, 2.5],
+				[1, 1.5]
+			],
+			"flyoverPoint": true
+		},
+		{
+			"gradient": [0, -1],
+			"delta": [-80, -70],
+			"width": 20,
+			"rail": [
+				[3, 1.2],
+				[1.7, 0.75]
+			]
+		},
+		{
+			"gradient": [0, -1],
+			"delta": [0, -80],
+			"width": 20,
+			"rail": [
+				[1, 3],
+				[1, 2]
+			],
+			"color": "lightgreen",
+			"flyoverPoint": true
+		},
+		{
+			"gradient": [1, 0],
+			"delta": [90, -90],
+			"width": 20,
+			"rail": [
+				[3, 1],
+				[2, 1]
+			],
+			"flyoverPoint": true
+		}
+	],
+	"grandStand": {
+		"trackEdge": -20,
+		"sideHeight": 2,
+		"front": -50,
+		"back": -250,
+		"left": -400,
+		"right": 50,
+		"height": 100
 	}
-]
+}

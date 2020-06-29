@@ -95,7 +95,7 @@ yodasws.page('home').setRoute({
 		},
 	];
 
-	let raceTrack = new RaceTrack(svg, json.cSuzuka.map(piece => new TrackPiece(piece)), [
+	let raceTrack = new RaceTrack(svg, json.cSuzuka.trackPieces.map(piece => new TrackPiece(piece)), [
 		new Car('Alice, TX', {
 			color: 'lightgreen',
 			color2: 'orange',
@@ -136,9 +136,9 @@ yodasws.page('home').setRoute({
 			strokeWidth: 2,
 			rgb: [0xBF, 0x1F, 0x2D],
 		}),
-	].sort(() => Math.sign(Math.random() * 2 - 1)), {
+	].sort(() => Math.sign(Math.random() * 2 - 1)), Object.assign({}, json.cSuzuka, {
 		laps: 10,
-	});
+	}));
 
 	raceTrack.simulation.stop();
 	raceTrack.init();
@@ -497,14 +497,16 @@ function buildReplay(raceTrack, {
 	})();
 
 	// Stands
-	(() => {
-		const trackEdge = -20;
-		const sideHeight = 2;
-		const front = -50;
-		const back = -250;
-		const left = -400;
-		const right = 50;
-		const height = 100;
+	((grandStand = {}) => {
+		const {
+			trackEdge = -20,
+			sideHeight = 2,
+			front = -50,
+			back = -250,
+			left = -400,
+			right = 50,
+			height = 100,
+		} = grandStand;
 		const stands = MeshBuilder.CreateRibbon('stands', {
 			closePath: false,
 			pathArray: [
@@ -559,7 +561,7 @@ function buildReplay(raceTrack, {
 		standsSiding.ambientColor = new Color3(0x73 / 0xff, 0x73 / 0xff, 0x73 / 0xff);
 		standsSiding.specularColor = new Color3(0xa0 / 0xff, 0xa0 / 0xff, 0xa0 / 0xff);
 		sides.material = standsSiding;
-	})();
+	})(raceTrack.grandStand);
 
 	// Set animation of overhead circling camera
 	(() => {
