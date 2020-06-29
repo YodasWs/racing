@@ -440,9 +440,11 @@ function buildReplay(raceTrack, {
 	const grass = new StandardMaterial('grass', scene);
 	grass.ambientColor = new Color3(0x7f / 0xff, 0xe5 / 0xff, 0x70 / 0xff);
 	grass.ambientTexture = new GrassProceduralTexture('grassPT', 256, scene);
+	grass.specularColor = new Color3(0x50 / 0xff, 0x50 / 0xff, 0x50 / 0xff);
 
 	const asphalt = new StandardMaterial('asphalt', scene);
 	asphalt.ambientColor = new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff);
+	asphalt.specularColor = new Color3(0x60 / 0xff, 0x60 / 0xff, 0x60 / 0xff);
 	const rpt = new GrassProceduralTexture('asphaltPT', 256, scene);
 	rpt.grassColors = [
 		new Color3(0xb7 / 0xff, 0xb5 / 0xff, 0xba / 0xff),
@@ -455,39 +457,109 @@ function buildReplay(raceTrack, {
 	black.diffuseColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
 	black.ambientColor = new Color3(1 / 0xff, 1 / 0xff, 1 / 0xff);
 
-	const siding = new StandardMaterial('siding', scene);
-	siding.diffuseColor = new Color3(0xeb / 0xff, 0x58 / 0xff, 0x63 / 0xff);
-	siding.ambientColor = new Color3(0xeb / 0xff, 0x58 / 0xff, 0x63 / 0xff);
+	const trackSiding = new StandardMaterial('trackSiding', scene);
+	trackSiding.diffuseColor = new Color3(0xeb / 0xff, 0x58 / 0xff, 0x63 / 0xff);
+	trackSiding.ambientColor = new Color3(0xeb / 0xff, 0x58 / 0xff, 0x63 / 0xff);
+	trackSiding.specularColor = new Color3(0xa0 / 0xff, 0xa0 / 0xff, 0xa0 / 0xff);
 
 	// Add ground
-	const vertexSpacing = 5;
-	const mapSubX = 200;
-	const mapSubZ = 200;
-	const terrainSub = 60;
+	const dtGround = (() => {
+		const vertexSpacing = 5;
+		const mapSubX = 200;
+		const mapSubZ = 200;
+		const terrainSub = 60;
 
-	const mapData = new Float32Array(mapSubX * mapSubZ * 3);
-	for (let l = 0; l < mapSubZ; l++) {
-		for (let w = 0; w < mapSubX; w++) {
-			const point = [
-				(w - mapSubX / 2) * vertexSpacing,
-				-0.05,
-				(l - mapSubZ / 2) * vertexSpacing,
-			];
-			mapData[3 * (l * mapSubX + w) + x] = point[x];
-			mapData[3 * (l * mapSubX + w) + y] = point[y];
-			mapData[3 * (l * mapSubX + w) + z] = point[z];
+		const mapData = new Float32Array(mapSubX * mapSubZ * 3);
+		for (let l = 0; l < mapSubZ; l++) {
+			for (let w = 0; w < mapSubX; w++) {
+				const point = [
+					(w - mapSubX / 2) * vertexSpacing,
+					-0.05,
+					(l - mapSubZ / 2) * vertexSpacing,
+				];
+				mapData[3 * (l * mapSubX + w) + x] = point[x];
+				mapData[3 * (l * mapSubX + w) + y] = point[y];
+				mapData[3 * (l * mapSubX + w) + z] = point[z];
+			}
 		}
-	}
 
-	const dtGround = new DynamicTerrain('dtGround', {
-		mapData,
-		mapSubX,
-		mapSubZ,
-		terrainSub,
-	}, scene);
-	dtGround.updateCameraLOD = camera => Math.abs((camera.globalPosition.y / 10)|0);
-	dtGround.mesh.material = grass;
-	dtGround.isAlwaysVisible = true;
+		// Ground Terrain
+		const dtGround = new DynamicTerrain('dtGround', {
+			mapData,
+			mapSubX,
+			mapSubZ,
+			terrainSub,
+		}, scene);
+		dtGround.updateCameraLOD = camera => Math.abs((camera.globalPosition.y / 10)|0);
+		dtGround.mesh.material = grass;
+		dtGround.isAlwaysVisible = true;
+		return dtGround;
+	})();
+
+	// Stands
+	(() => {
+		const trackEdge = -20;
+		const sideHeight = 2;
+		const front = -50;
+		const back = -250;
+		const left = -400;
+		const right = 50;
+		const height = 100;
+		const stands = MeshBuilder.CreateRibbon('stands', {
+			closePath: false,
+			pathArray: [
+				[
+					new Vector3(right, 0, trackEdge),
+					new Vector3(right, 0, front),
+					new Vector3(right, height, back),
+				],
+				[
+					new Vector3(left, 0, trackEdge),
+					new Vector3(left, 0, front),
+					new Vector3(left, height, back),
+				],
+			],
+		}, scene);
+		const crowd = new StandardMaterial('crowd', scene);
+		crowd.ambientColor = new Color3(0xaa / 0xff, 0xaa / 0xff, 0xaa / 0xff);
+		crowd.specularColor = new Color3(0x40 / 0xff, 0x40 / 0xff, 0x40 / 0xff);
+		const cpt = new GrassProceduralTexture('crowdPT', 256, scene);
+		cpt.grassColors = [
+			new Color3(0xa5 / 0xff, 0xa5 / 0xff, 0xd7 / 0xff),
+			new Color3(0xd7 / 0xff, 0xa5 / 0xff, 0xaa / 0xff),
+			new Color3(0xa5 / 0xff, 0xd7 / 0xff, 0xa5 / 0xff),
+		];
+		crowd.ambientTexture = cpt;
+		stands.material = crowd;
+
+		const sides = MeshBuilder.CreateRibbon('standsSides', {
+			sideOrientation: Mesh.DOUBLESIDE,
+			closePath: false,
+			pathArray: [
+				[
+					new Vector3(right, 0, trackEdge),
+					new Vector3(right, 0, front),
+					new Vector3(right, 0, back),
+					new Vector3(left, 0, back),
+					new Vector3(left, 0, front),
+					new Vector3(left, 0, trackEdge),
+				],
+				[
+					new Vector3(right, 0 + sideHeight, trackEdge),
+					new Vector3(right, 0 + sideHeight, front),
+					new Vector3(right, height + sideHeight, back),
+					new Vector3(left, height + sideHeight, back),
+					new Vector3(left, 0 + sideHeight, front),
+					new Vector3(left, 0 + sideHeight, trackEdge),
+				],
+			],
+		}, scene);
+		const standsSiding = new StandardMaterial('standsSiding', scene);
+		standsSiding.diffuseColor = new Color3(0x73 / 0xff, 0x73 / 0xff, 0x73 / 0xff);
+		standsSiding.ambientColor = new Color3(0x73 / 0xff, 0x73 / 0xff, 0x73 / 0xff);
+		standsSiding.specularColor = new Color3(0xa0 / 0xff, 0xa0 / 0xff, 0xa0 / 0xff);
+		sides.material = standsSiding;
+	})();
 
 	// Set animation of overhead circling camera
 	(() => {
@@ -567,7 +639,7 @@ function buildReplay(raceTrack, {
 			pathArray,
 			closePath: true,
 		}, scene);
-		rail.material = siding;
+		rail.material = trackSiding;
 	});
 	// Build track after siding because of the array reverse
 	const track = MeshBuilder.CreateRibbon('track', {
