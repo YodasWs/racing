@@ -117,6 +117,8 @@ Object.defineProperties(RaceTrack.prototype, {
 			this.tick++;
 			this.moveCars();
 			this.listCars();
+
+			// At end of race
 			if (this.cars.every(c => c.lapTimes.length > this.laps)) {
 				this.simulation.stop();
 

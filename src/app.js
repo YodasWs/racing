@@ -502,22 +502,22 @@ function buildReplay(raceTrack, {
 			trackEdge = -20,
 			sideHeight = 2,
 			front = -50,
-			back = -250,
-			left = -400,
-			right = 50,
-			height = 100,
+			back = -150,
+			left = -100,
+			right = 100,
+			height = 50,
 		} = grandStand;
 		const stands = MeshBuilder.CreateRibbon('stands', {
 			closePath: false,
 			pathArray: [
 				[
-					new Vector3(right, 0, trackEdge),
-					new Vector3(right, 0, front),
+					new Vector3(right, -0.03, trackEdge),
+					new Vector3(right, -0.03, front),
 					new Vector3(right, height, back),
 				],
 				[
-					new Vector3(left, 0, trackEdge),
-					new Vector3(left, 0, front),
+					new Vector3(left, -0.03, trackEdge),
+					new Vector3(left, -0.03, front),
 					new Vector3(left, height, back),
 				],
 			],
@@ -539,27 +539,31 @@ function buildReplay(raceTrack, {
 			closePath: false,
 			pathArray: [
 				[
-					new Vector3(right, 0, trackEdge),
-					new Vector3(right, 0, front),
-					new Vector3(right, 0, back),
-					new Vector3(left, 0, back),
-					new Vector3(left, 0, front),
-					new Vector3(left, 0, trackEdge),
+					new Vector3(right, -0.03, trackEdge),
+					new Vector3(right, -0.03, front),
+					new Vector3(right, -0.03, back),
+					new Vector3(right, -0.03, back),
+					new Vector3(left, -0.03, back),
+					new Vector3(left, -0.03, back),
+					new Vector3(left, -0.03, front),
+					new Vector3(left, -0.03, trackEdge),
 				],
 				[
-					new Vector3(right, 0 + sideHeight, trackEdge),
-					new Vector3(right, 0 + sideHeight, front),
+					new Vector3(right, -0.03 + sideHeight, trackEdge),
+					new Vector3(right, -0.03 + sideHeight, front),
+					new Vector3(right, height + sideHeight, back),
 					new Vector3(right, height + sideHeight, back),
 					new Vector3(left, height + sideHeight, back),
-					new Vector3(left, 0 + sideHeight, front),
-					new Vector3(left, 0 + sideHeight, trackEdge),
+					new Vector3(left, height + sideHeight, back),
+					new Vector3(left, -0.03 + sideHeight, front),
+					new Vector3(left, -0.03 + sideHeight, trackEdge),
 				],
 			],
 		}, scene);
 		const standsSiding = new StandardMaterial('standsSiding', scene);
-		standsSiding.diffuseColor = new Color3(0x73 / 0xff, 0x73 / 0xff, 0x73 / 0xff);
-		standsSiding.ambientColor = new Color3(0x73 / 0xff, 0x73 / 0xff, 0x73 / 0xff);
-		standsSiding.specularColor = new Color3(0xa0 / 0xff, 0xa0 / 0xff, 0xa0 / 0xff);
+		standsSiding.diffuseColor = new Color3(0x63 / 0xff, 0x63 / 0xff, 0x63 / 0xff);
+		standsSiding.ambientColor = new Color3(0x83 / 0xff, 0x83 / 0xff, 0x83 / 0xff);
+		standsSiding.specularColor = new Color3(0xd0 / 0xff, 0xd0 / 0xff, 0xd0 / 0xff);
 		sides.material = standsSiding;
 	})(raceTrack.grandStand);
 
