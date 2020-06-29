@@ -190,6 +190,26 @@
 				[2, 1]
 			],
 			"flyoverPoint": true
+		},
+		{
+			"gradient": [1, 0],
+			"delta": [90, 0],
+			"width": 20
+		},
+		{
+			"gradient": [1, 0],
+			"delta": [90, 0],
+			"width": 20
+		},
+		{
+			"gradient": [1, 0],
+			"delta": [90, 0],
+			"width": 20
+		},
+		{
+			"gradient": [1, 0],
+			"delta": [90, 0],
+			"width": 20
 		}
 	],
 	"grandStand": {

@@ -116,18 +116,18 @@ yodasws.page('home').setRoute({
 			rgb: [0x24, 0x9E, 0x57],
 		}),
 		new Car('Dallas, TX', {
-			color: 'white',
-			color2: 'blue',
-			r: 3,
-			strokeWidth: 3,
-			rgb: [0, 0, 0xff],
-		}),
-		new Car('Edison, NJ', {
-			color: 'lightblue',
-			color2: 'cornflowerblue',
+			color: 'red',
+			color2: '#000191',
 			r: 3.5,
 			strokeWidth: 2,
-			rgb: [0xAD, 0xD8, 0xE6],
+			rgb: [0, 0x01, 0x91],
+		}),
+		new Car('Edison, NJ', {
+			color: 'white',
+			color2: '#00375D',
+			r: 3,
+			strokeWidth: 3,
+			rgb: [0x30, 0x67, 0x8D],
 		}),
 		new Car('Florence, TN', {
 			color: '#1E3258',
@@ -136,7 +136,21 @@ yodasws.page('home').setRoute({
 			strokeWidth: 2,
 			rgb: [0xBF, 0x1F, 0x2D],
 		}),
-	].sort(() => Math.sign(Math.random() * 2 - 1)), Object.assign({}, json.cSuzuka, {
+		new Car('Garland, TX', {
+			color: '#E61234',
+			color2: '#FDB920',
+			r: 3,
+			strokeWidth: 3,
+			rgb: [0xFD, 0xB9, 0x20],
+		}),
+		new Car('Helena, Al', {
+			color: 'white',
+			color2: '#A49C44',
+			r: 3,
+			strokeWidth: 3,
+			rgb: [0xB4, 0x9C, 0x26],
+		}),
+	].sort(() => 0 && Math.sign(Math.random() * 2 - 1)), Object.assign({}, json.cSuzuka, {
 		laps: 10,
 	}));
 
@@ -407,7 +421,7 @@ function buildReplay(raceTrack, {
 			new Vector3(raceTrack.extrema[x][0], 20, raceTrack.extrema[y][0] - 30),
 			scene,
 		], {
-			φRange: [150 * Math.PI / 180, 3 * Math.PI / 2],
+			φRange: [150 * Math.PI / 180, 5 * Math.PI / 4],
 		}),
 		new RaceCamera('UniversalCamera', [
 			'cameraOverheadCenter',
