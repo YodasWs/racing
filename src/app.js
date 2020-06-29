@@ -403,14 +403,14 @@ function buildReplay(raceTrack, {
 	// 3. range of acceptable cameraTarget.sPosition.φ values
 	const cameras = [
 		new RaceCamera('UniversalCamera', [
-			'universalCamera3',
+			'cameraTopLeftCorner',
 			new Vector3(raceTrack.extrema[x][0], 20, raceTrack.extrema[y][0] - 30),
 			scene,
 		], {
 			φRange: [150 * Math.PI / 180, 3 * Math.PI / 2],
 		}),
 		new RaceCamera('UniversalCamera', [
-			'universalCamera1',
+			'cameraOverheadCenter',
 			new Vector3(-35, 160, 2 * raceTrack.extrema[y][1]),
 			scene,
 		]),
@@ -422,14 +422,14 @@ function buildReplay(raceTrack, {
 			φRange: [-Math.PI / 2, 10 * Math.PI / 180],
 		}),
 		new RaceCamera('UniversalCamera', [
-			'universalCamera4',
-			new Vector3(-50, 20, raceTrack.extrema[y][1] + 70),
+			'cameraBackMidfield',
+			new Vector3(-50, 50, raceTrack.extrema[y][1] + 70),
 			scene,
 		], {
 			φRange: [0 * Math.PI / 180, 125 * Math.PI / 180],
 		}),
 		new RaceCamera('UniversalCamera', [
-			'universalCameraA',
+			'cameraCircling',
 			new Vector3(raceTrack.extrema[x][0] + 200, 20, raceTrack.extrema[y][0] - 10),
 			scene,
 		]),
@@ -537,7 +537,7 @@ function buildReplay(raceTrack, {
 			cars.reduce((sum, car) => sum + car.radius, 0) / cars.length,
 			cars.reduce((sum, car) => sum + car.posn[0].y, 0) / cars.length
 		);
-		cameras.filter(cam => cam.id === 'universalCameraA').forEach((cam) => {
+		cameras.filter(cam => cam.id === 'cameraCircling').forEach((cam) => {
 			cam.lockedTarget = position;
 			animes.addTargetedAnimation(a, cam);
 		});
@@ -628,12 +628,12 @@ function buildReplay(raceTrack, {
 			playTime: filmCountdownOnly ? 1 : 20,
 			nextStage: 'countdown',
 			loopAnimes: true,
-			camera: cameras.find(cam => cam.id === 'universalCameraA'),
+			camera: cameras.find(cam => cam.id === 'cameraCircling'),
 			cameras,
 		},
 		countdown: {
 			animes: new AnimationGroup('animeCountdown'),
-			camera: cameras.find(cam => cam.id === 'universalCamera1'),
+			camera: cameras.find(cam => cam.id === 'cameraOverheadCenter'),
 			nextStage: 'race',
 			playTime: 3.5,
 		},
@@ -988,7 +988,7 @@ function buildReplay(raceTrack, {
 			raceCameraTarget.position = keys[0][0].value;
 			stages.race.cameras.forEach(camera => camera.lockedTarget = raceCameraTarget);
 
-			cameras.filter(cam => cam.id === 'universalCameraA').forEach((cam) => {
+			cameras.filter(cam => cam.id === 'cameraCircling').forEach((cam) => {
 				cam.lockedTarget = raceCameraTarget;
 			});
 
@@ -1144,7 +1144,7 @@ function buildReplay(raceTrack, {
 
 		stage.overlay.render = () => {
 			// Sort cars in order of race position
-			const maxTick = lCars.reduce((tick, c) => Math.max(tick, c.lapTimes[c.lapTimes.length - 1].tick), 0);
+			const maxTick = cars.reduce((tick, c) => Math.max(tick, c.lapTimes[c.lapTimes.length - 1].tick), 0);
 			getRaceState(maxTick).forEach((car, i) => {
 				// Draw names on screen overlay
 				txtCarsPositions[i].text = `${i + 1} ${car.name}`;
