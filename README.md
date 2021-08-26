@@ -1,5 +1,5 @@
 # World Federation of Marble Racing (WFMR)
-More to come
+A marble racing simulator built using d3.js. The results are then rendered in HD video using babylon.js that can be saved and shared.
 
 ## Resources
 
