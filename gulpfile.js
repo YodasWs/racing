@@ -47,11 +47,18 @@ const argv = require('yargs')
 			alias: 's',
 		},
 	})
+	.command('generate:section', 'Generate a new section', {
+		name: {
+			describe: 'Name for your new section',
+			required: true,
+			alias: 'n',
+		},
+	})
 	.command('lint', 'Lint all JavaScript and Sass/SCSS files')
 	.command('transfer-files', 'Transfer all static assets and resources to docs folder')
 	.command('watch', 'Watch files for changes to recompile')
 	.help('?')
-	.epilog(' ©2017–2019 Samuel B Grundman')
+	.epilog(' ©2017–2021 Samuel B Grundman')
 	.argv;
 
 const gulp = require('gulp');
@@ -61,7 +68,6 @@ const fileExists = require('file-exists');
 const plugins = {
 	...require('gulp-load-plugins')({
 		rename: {
-			'yodasws.gulp-pattern-replace': 'replaceString',
 			'gulp-autoprefixer': 'prefixCSS',
 			'gulp-run-command': 'cli',
 			'gulp-sass-lint': 'lintSass',
@@ -91,11 +97,11 @@ const browsers = [
 	'last 2 Chrome versions',
 	'Safari >= 10',
 	'ie_mob >= 11',
-	'ie >= 11'
+	'ie >= 11',
 ];
 
 const options = {
-	compileJS:{
+	compileJS: {
 		comments: false,
 		minified: true,
 		babelrc: false,
@@ -109,7 +115,7 @@ const options = {
 			],
 		]
 	},
-	compileSass:{
+	compileSass: {
 		importer: require('@mightyplow/sass-dedup-importer'),
 		outputStyle: 'compressed',
 		includePaths: [
@@ -117,10 +123,10 @@ const options = {
 			'src/scss',
 		],
 	},
-	stripCssComments:{
+	stripCssComments: {
 		preserve: false,
 	},
-	compileHTML:{
+	compileHTML: {
 		collapseWhitespace: true,
 		decodeEntities: true,
 		keepClosingSlash: true,
@@ -130,22 +136,22 @@ const options = {
 		removeStyleLinkTypeAttributes: true,
 		useShortDoctype: true,
 	},
-	lintES:{
+	lintES: {
 		parserOptions: {
 			sourceType: 'module',
 			ecmaVersion: 7,
 		},
 		env: {
 			browser: true,
-			es6: true
+			es6: true,
 		},
 		rules: {
 
 'strict': [
-	2, 'global'
+	2, 'global',
 ],
 'indent': [
-	2, 'tab'
+	2, 'tab',
 ],
 'space-before-function-paren': 0,
 'comma-dangle': 0,
@@ -157,9 +163,9 @@ const options = {
 
 		},
 	},
-	lintSass:{
+	lintSass: {
 		files: {
-			ignore: '**/*.min.css'
+			ignore: '**/*.min.css',
 		},
 		rules: {
 
@@ -236,7 +242,7 @@ const options = {
 'property-sort-order': 0,
 'pseudo-element': 1,
 'quotes': [
-	1, { style: 'single' }
+	1, { style: 'double' }
 ],
 'shorthand-values': 1,
 'url-quotes': 1,
@@ -255,7 +261,7 @@ const options = {
 
 		},
 	},
-	prefixCSS:{
+	prefixCSS: {
 		cascade: false,
 		overrideBrowserslist: browsers,
 	},
@@ -274,7 +280,7 @@ const options = {
 			],
 		},
 	},
-	concat:{
+	concat: {
 		css: {
 			path: 'min.css',
 		},
@@ -356,7 +362,7 @@ const options = {
 				});
 				return requires;
 			},
-			options:{
+			options: {
 				notReplaced: false,
 			},
 		},
@@ -395,7 +401,8 @@ function runTasks(task) {
 		if (['lintSass', 'lintES'].includes(subtask)) return;
 		let option = options[subtask] || {};
 		if (option[fileType]) option = option[fileType];
-		stream = stream.pipe(plugins[subtask](option)).on('error', function () {
+		stream = stream.pipe(plugins[subtask](option)).on('error', function (error) {
+			console.error('Error!', error);
 			this.emit('end');
 		});
 	});
@@ -404,13 +411,13 @@ function runTasks(task) {
 	return stream.pipe(gulp.dest(task.dest || options.dest));
 }
 
-;[
+[
 	{
 		name: 'compile:sass',
 		src: [
 			'src/**/*.{sa,sc,c}ss',
 			'!**/*.min.css',
-			'!**/min.css'
+			'!**/min.css',
 		],
 		tasks: [
 			'lintSass',
@@ -420,7 +427,6 @@ function runTasks(task) {
 			'stripCssComments',
 			'rmLines',
 			'prefixCSS',
-			'connect.reload',
 		],
 		fileType: 'css',
 	},
@@ -456,7 +462,6 @@ function runTasks(task) {
 		tasks: [
 			'compileJS',
 			'rmLines',
-			'connect.reload',
 		],
 		fileType: 'js',
 	},
@@ -469,7 +474,6 @@ function runTasks(task) {
 		tasks: [
 			'ssi',
 			'compileHTML',
-			'connect.reload',
 		],
 		fileType: 'html',
 	},
@@ -477,13 +481,12 @@ function runTasks(task) {
 		name: 'transfer:assets',
 		src: [
 			'./src/**/*.jp{,e}g',
-			// './src/**/*.json',
 			'./src/**/*.gif',
 			'./src/**/*.png',
 			'./src/**/*.ttf',
 		],
 		tasks: [],
-	}
+	},
 ].forEach((task) => {
 	gulp.task(task.name, () => {
 		return runTasks(task);
@@ -519,10 +522,7 @@ gulp.task('transfer:fonts', () => gulp.src([
 );
 
 gulp.task('transfer:res', () => gulp.src([
-	'./lib/yodasws.js',
-	'./lib/d3.min.js',
-	'./lib/webm-writer-0.2.4.js',
-	'./lib/babylon.grassProceduralTexture.min.js',
+	'./lib/*.js',
 ])
 	.pipe(gulp.dest(path.join(options.dest, 'res'))),
 );
@@ -544,20 +544,24 @@ gulp.task('compile:js', gulp.series(
 ));
 
 gulp.task('compile', gulp.parallel('compile:html', 'compile:js', 'compile:sass', 'transfer-files'));
+gulp.task('reload', (done) => {
+	gulp.src('docs/').pipe(plugins['connect.reload']());
+	done();
+});
 
 gulp.task('watch', (done) => {
 	gulp.watch('./src/**/*.{sa,sc,c}ss', {
 		usePolling: true,
-	}, gulp.series('compile:sass'));
-	gulp.watch('./lib/yodasws.js', {
+	}, gulp.series('compile:sass', 'reload'));
+	gulp.watch('./lib/*.js', {
 		usePolling: true,
-	}, gulp.series('transfer:res'));
+	}, gulp.series('transfer:res', 'reload'));
 	gulp.watch('./src/**/*.{js,json}', {
 		usePolling: true,
-	}, gulp.series('compile:js'));
+	}, gulp.series('compile:js', 'reload'));
 	gulp.watch('./src/**/*.html', {
 		usePolling: true,
-	}, gulp.series('compile:html'));
+	}, gulp.series('compile:html', 'reload'));
 	done();
 });
 
@@ -585,9 +589,11 @@ gulp.task('generate:page', gulp.series(
 				.pipe(gulp.dest(`./src/pages/${argv.sectionCC}${argv.nameCC}`));
 		},
 		() => {
-			const str = `yodasws.page('${argv.sectionCC}${argv.nameCC}').setRoute({
+			const str = `yodasws.page('${argv.module}').setRoute({
+	title: '${argv.name}',
 	template: 'pages/${argv.sectionCC}${argv.nameCC}/${argv.nameCC}.html',
-	route: '/${argv.sectionCC}${argv.nameCC}/',
+	canonicalRoute: '/${argv.sectionCC}${argv.nameCC}/',
+	route: '/${argv.sectionCC}${argv.nameCC}/?',
 }).on('load', () => {
 	console.log('Page loaded!');
 });\n`
@@ -601,16 +607,67 @@ gulp.task('generate:page', gulp.series(
 			site.pages.push(`${argv.sectionCC}${argv.nameCC}`);
 			return plugins.newFile('app.json', JSON.stringify(site, null, '\t'), { src: true })
 				.pipe(gulp.dest(`./src`));
-		}
+		},
 	),
 	plugins.cli([
 		`git status`,
-	])
+	]),
 ));
 
-gulp.task('init:win', () => {
-});
+gulp.task('generate:section', gulp.series(
+	(done) => {
+		argv.nameCC = camelCase(argv.name);
+		argv.module = camelCase('page', argv.nameCC);
+		done();
+	},
+	gulp.parallel(
+		() => {
+			const str = `[y-page='${argv.module}'] {\n\t/* SCSS Goes Here */\n}\n`;
+			return plugins.newFile(`${argv.nameCC}.scss`, str, { src: true })
+				.pipe(gulp.dest(`./src/pages/${argv.nameCC}`));
+		},
+		() => {
+			const str = `<h2>${argv.name}</h2>\n`;
+			return plugins.newFile(`${argv.nameCC}.html`, str, { src: true })
+				.pipe(gulp.dest(`./src/pages/${argv.nameCC}`));
+		},
+		() => {
+			const str = `yodasws.page('${argv.module}').setRoute({
+	title: '${argv.name}',
+	canonicalRoute: '/${argv.nameCC}/',
+	template(match, ...p) {
+		const path = p.join('/').replace(/\\/+/g, '/').replace(/^\\\/|\\\/$/g, '').split('/').filter(p => p != '');
+		if (path.length === 0) {
+			return 'pages/${argv.nameCC}/${argv.nameCC}.html';
+		}
+		return {
+			canonicalRoute: '/${argv.nameCC}/' + path.join('/') + '/',
+			template: 'pages/${argv.nameCC}/' + path.join('.') + '.html',
+		};
+	},
+	route: '/${argv.nameCC}(/.*)*',
+}).on('load', () => {
+	console.log('Page loaded!');
+});\n`
+			return plugins.newFile(`ctrl.js`, str, { src: true })
+				.pipe(gulp.dest(`./src/pages/${argv.nameCC}`));
+		},
+		() => {
+			// Add to app.json
+			const site = require('./src/app.json');
+			if (!site.pages) site.pages = [];
+			site.pages.push(`${argv.nameCC}`);
+			return plugins.newFile('app.json', JSON.stringify(site, null, '\t'), { src: true })
+				.pipe(gulp.dest(`./src`));
+		},
+	),
+	plugins.cli([
+		`git status`,
+	]),
+));
 
+// TODO: Let's move all of this into a separate file.
+// Here we only need to check that other file exists, run it, then maybe delete it
 gulp.task('init', gulp.series(
 	plugins.cli([
 		`mkdir -pv ./src`,
@@ -637,12 +694,12 @@ gulp.task('init', gulp.series(
 </head>
 <body>
 <!--#include file="includes/header/header.html" -->
-<main></main>
+<main aria-live="polite"></main>
 <div id="y-spinner">
-	<div class="spinner"></div>
-	<div class="spinner-center"></div>
-	<div class="loading-text">Loading&hellip;</div>
-</div>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-60 -60 120 120">
+	<path d="M 0-40 A 40 40 0 1 1 0 40" />
+	<path d="M 0-40 A 40 40 0 1 0 0 40" />
+</svg>Loading&hellip;</div>
 </body>
 </html>\n`;
 			return plugins.newFile(`index.html`, str, { src: true })
@@ -661,16 +718,15 @@ body {\n\tmargin: 0 auto;\n\twidth: 100%;\n\tmax-width: 1200px;\n\tmin-height: 1
 \t@media (min-width: 1201px) {\n\t\tborder: solid black;\n\t\tborder-width: 0 1px;\n\t}\n
 \t> * {\n\t\tpadding: 5px calc(5px * 2.5);\n\t}\n}\n
 h1,\nh2,\nh3,\nh4,\nh5,\nh6 {\n\tmargin: 0;\n}\n
-@keyframes spinner {\n\t0% {\n\t\ttransform: rotate(0deg);\n\t}\n\t2% {\n\t\ttransform: rotate(0deg);\n\t}
-\t98% {\n\t\ttransform: rotate(calc(360deg * 5));\n\t}\n\t100% {\n\t\ttransform: rotate(calc(360deg * 5));\n\t}\n}\n
-#y-spinner {\n\tmargin: 0 auto;\n\ttext-align: center;\n\tposition: absolute;\n\tleft: 50%;\n\ttop: 50%;\n\ttransform: translate(-50%, -50%);\n
-\t.spinner {\n\t\tdisplay: inline-block;\n\t\twidth: 100px;\n\t\theight: 100px;
-\t\tbackground: url('http://i.imgur.com/oSHLAzp.png') center center;\n\t\tbackground-size: contain;
-\t\ttransform-origin: 50% 50%;\n\t\tanimation: spinner 3s infinite alternate ease-in-out;\n\t\tcontent: '';\n\t}\n
-\t.spinner-center {\n\t\tdisplay: inline-block;\n\t\tposition: absolute;\n\t\tmargin-left: -100px;\n\t\twidth: 100px;\n\t\theight: 100px;
-\t\tbackground: url('http://i.imgur.com/u0BC2ZR.png') center center;\n\t\tbackground-size: contain;\n\t\tcontent: '';\n\t}\n
-\t.loading-text {\n\t\tposition: relative;\n\t\tz-index: 1;\n\t\tfont-size: 1.5rem;\n\t\tfont-family: "Comic Sans MS", cursive, sans-serif;
-a:link,\na:visited {\n\tcolor: dodgerblue;\n}\n`;
+a:link,\na:visited {\n\tcolor: dodgerblue;\n}\n
+#y-spinner {\n\tfont-size: 2rem;\n\ttext-align: center;\n
+\tsvg {\n\t\tdisplay: block;\n\t\tmargin: 20vh auto 0;\n\t\tmax-width: 150px;\n\t}\n
+\tsvg * {\n\t\tstroke-linejoin: round;\n\t\tstroke-linecap: round;\n\t}\n
+\tpath {\n\t\tfill: none;\n\t\tstroke: black;\n\t\tstroke-width: 10px;\n\t\topacity: 0.5;\n
+\t\t&:nth-of-type(odd) {\n\t\t\tanimation: 2s linear infinite rotate;\n\t\t\tstroke: red;\n\t\t}\n
+\t\t&:nth-of-type(even) {\n\t\t\tanimation: 3s linear infinite reverse rotate;\n\t\t\tstroke: gold;\n\t\t}\n\t}\n
+\t@keyframes rotate {\n\t\tfrom { transform: rotate(0deg); }\n\t\tto { transform: rotate(360deg); }\n\t}\n
+\t~ nav[y-component="topNav"] {\n\t\tdisplay: none;\n\t}\n}\n`;
 			return plugins.newFile(`main.scss`, str, { src: true })
 				.pipe(gulp.dest(`./src`));
 		},
@@ -753,6 +809,16 @@ body > nav:not([hidden]) {\n\tdisplay: flex;\n\tflex-flow: row wrap;\n\tjustify-
 			}
 			const str = `<h2>Home</h2>\n`;
 			return plugins.newFile(`home.html`, str, { src: true })
+				.pipe(gulp.dest(`./src/pages`));
+		},
+
+		(done) => {
+			if (fileExists.sync('src/pages/home.scss')) {
+				done();
+				return;
+			}
+			const str = `[y-page='home'] {\n\t/* SCSS Goes Here */\n}\n`;
+			return plugins.newFile(`home.scss`, str, { src: true })
 				.pipe(gulp.dest(`./src/pages`));
 		},
 
