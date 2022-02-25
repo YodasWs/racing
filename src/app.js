@@ -95,7 +95,7 @@ yodasws.page('home').setRoute({
 		},
 	];
 
-	let raceTrack = new RaceTrack(svg, json.cSuzuka.trackPieces.map(piece => new TrackPiece(piece)), [
+	let raceTrack = new RaceTrack(svg, [
 		new Car('Alice, TX', {
 			color: 'lightgreen',
 			color2: 'orange',
@@ -143,7 +143,7 @@ yodasws.page('home').setRoute({
 			strokeWidth: 3,
 			rgb: [0xFD, 0xB9, 0x20],
 		}),
-		new Car('Helena, Al', {
+		new Car('Helena, AL', {
 			color: 'white',
 			color2: '#A49C44',
 			r: 3,

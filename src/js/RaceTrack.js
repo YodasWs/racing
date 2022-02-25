@@ -4,7 +4,7 @@ const x = 0;
 const y = 1;
 const z = 2;
 
-function RaceTrack(svg, track, cars, options = {}) {
+function RaceTrack(svg, cars, options = {}) {
 	const simulation = d3.forceSimulation();
 
 	Object.assign(this, {
@@ -43,8 +43,10 @@ function RaceTrack(svg, track, cars, options = {}) {
 		},
 	});
 
-	if (Array.isArray(track)) {
-		this.setTrack(track);
+	if (Array.isArray(options.gradients)) {
+		this.setTrack(options.gradients.map(piece => new TrackPiece(piece)));
+	} else if (Array.isArray(options.trackPieces)) {
+		this.setTrack(options.trackPieces.map(piece => new TrackPiece(piece)));
 	}
 	if (Array.isArray(cars)) {
 		this.setCars(cars);
@@ -56,14 +58,11 @@ RaceTrack.fromJson = (json, svg = null) => {
 		svg = document.querySelector('svg');
 	}
 
-	// function RaceTrack(svg, track, cars, options)
+	// function RaceTrack(svg, cars, options)
 	return new RaceTrack(
 		svg,
-		json.gradients.map(piece => new TrackPiece(piece)),
 		json.cars,
-		{
-			laps: json.laps,
-		}
+		json,
 	);
 };
 
