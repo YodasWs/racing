@@ -3,7 +3,8 @@
 	"components": [],
 	"sections": [],
 	"json": {
-		"cSuzuka": "circuits/suzuka"
+		"cSuzuka": "circuits/suzuka",
+		"cOval": "circuits/oval"
 	},
 	"pages": []
 }

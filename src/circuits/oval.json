@@ -1,0 +1,80 @@
+{
+	"trackPieces": [
+		{
+			"gradient": [1, 0],
+			"delta": [0, 0],
+			"width": 20,
+			"color": "black"
+		},
+		{
+			"gradient": [1, 0],
+			"delta": [20, 0],
+			"width": 20,
+			"rail": [1, 0.25]
+		},
+		{
+			"gradient": [1, 1],
+			"delta": [27, 13],
+			"width": 20,
+			"rail": [1, 0.25]
+		},
+		{
+			"gradient": [0, 1],
+			"delta": [13, 27],
+			"width": 20,
+			"rail": [1, 0.25]
+		},
+		{
+			"gradient": [-1, 1],
+			"delta": [-13, 27],
+			"width": 20,
+			"rail": [1, 0.25]
+		},
+		{
+			"gradient": [-1, 0],
+			"delta": [-27, 13],
+			"width": 20,
+			"rail": [1, 0.25],
+			"color": "lightgreen"
+		},
+		{
+			"gradient": [-1, 0],
+			"delta": [-120, 0],
+			"width": 20,
+			"rail": [1, 0.25]
+		},
+		{
+			"gradient": [-1, -1],
+			"delta": [-27, -13],
+			"width": 20,
+			"rail": [1, 0.25]
+		},
+		{
+			"gradient": [0, -1],
+			"delta": [-13, -27],
+			"width": 20,
+			"rail": [1, 0.25]
+		},
+		{
+			"gradient": [1, -1],
+			"delta": [13, -27],
+			"width": 20,
+			"rail": [1, 0.25]
+		},
+		{
+			"gradient": [1, 0],
+			"delta": [27, -13],
+			"width": 20,
+			"rail": [1, 0.25]
+		}
+	],
+	"grandStand": {
+		"trackEdge": -20,
+		"sideHeight": 2,
+		"front": -30,
+		"back": -100,
+		"left": -105,
+		"right": 25,
+		"height": 35
+	}
+}
