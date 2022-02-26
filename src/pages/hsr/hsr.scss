@@ -1,0 +1,33 @@
+[y-page='pageHsr'] {
+	svg {
+		margin-top: 1em;
+		border: 1px solid black;
+		cursor: grab;
+
+		&.zoom {
+			cursor: zoom-in;
+		}
+	}
+
+	g.exits > circle {
+		stroke-width: 1.5px;
+		fill: none;
+		r: 2px;
+
+		&:nth-of-type(3n) {
+			stroke: #249E57;
+		}
+		&:nth-of-type(3n + 1) {
+			stroke: #f06060;
+		}
+		&:nth-of-type(3n + 2) {
+			stroke: #8494e7;
+		}
+	}
+
+	g.cars > circle {
+		stroke-width: 0;
+		fill: black;
+		r: 1px;
+	}
+}

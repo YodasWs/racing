@@ -6,5 +6,7 @@
 		"cSuzuka": "circuits/suzuka",
 		"cOval": "circuits/oval"
 	},
-	"pages": []
+	"pages": [
+		"hsr"
+	]
 }
