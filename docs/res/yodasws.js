@@ -8,6 +8,7 @@
 		].map(parent => new parent(...arguments))));
 	});
 
+	let SITE_TITLE = '';
 	let firstLoad = true;
 
 	// Define Item Collections
@@ -79,8 +80,11 @@
 	});
 
 	// Page Class Definition
-	function Page(pageName) {
+	function Page(pageName, {
+		title = null,
+	} = {}) {
 		Object.assign(this, {
+			title,
 		});
 		return this;
 	}
@@ -116,7 +120,6 @@
 						if (!name) {
 							name = `evt${eventCount++}`;
 						}
-						console.log(`I'm listening for ${type}.${name}`);
 						events[type] = events[type] || {};
 						events[type][name] = events[type][name] || []
 						events[type][name].push(cb);
@@ -141,7 +144,6 @@
 			fire: {
 				enumerable: true,
 				value(type, detail = undefined) {
-					console.log('firing', type);
 					eventTarget.dispatchEvent(new CustomEvent(type, {
 						detail,
 					}));
@@ -183,6 +185,7 @@
 
 	// Load First Route
 	window.onload = () => {
+		SITE_TITLE = document.title;
 		if (!window.location.hash) {
 			history.replaceState({}, null, '#!/');
 		}
@@ -200,14 +203,26 @@
 
 	// Load Route Template
 	function loadRoute(route) {
-		console.log('Route:', route);
 		const xhr = new XMLHttpRequest();
 		xhr.onreadystatechange = () => {
 			if (xhr.readyState === 4) {
 				// Page Loaded
 				if (Math.floor(xhr.status / 100) === 2) {
+					if (typeof route.canonicalRoute === 'string' && route.canonicalRoute !== '') {
+						history.replaceState({}, null, `#!${route.canonicalRoute}`);
+					} else if (typeof route.canonicalRoute === 'function') {
+						const rte = route.canonicalRoute(route);
+						if (typeof rte === 'string' && rte !== '') {
+							history.replaceState({}, null, `#!${rte}`);
+						}
+					}
 					// Display Page
 					main.innerHTML = xhr.response;
+					if (route.title || route.page.title) {
+						document.title = `${route.title || route.page.title} | ${SITE_TITLE}`;
+					} else {
+						document.title = SITE_TITLE;
+					}
 					showMain();
 					main.setAttribute('y-page', route.page.name);
 					Object.defineProperty(route.page, 'element', {
@@ -235,11 +250,13 @@
 							loadRoute(yodasws.routes.get('404'));
 						} else {
 							main.innerHTML = '<p>Page not found</p>';
+							document.title = SITE_TITLE;
 							showMain();
 						}
 						break;
 					default:
 						main.innerHTML = '<p>Error</p>';
+						document.title = SITE_TITLE;
 						showMain();
 				}
 			}
@@ -269,20 +286,43 @@
 	// Route Handling
 	window.onpopstate = () => {
 		const url = window.location.hash.replace('#!', '');
-		for (const route of yodasws.routes.entries()) {
+		for (const pageRoute of yodasws.routes.values()) {
 			const regex = (() => {
-				if (typeof route[1].route === 'string') return new RegExp(`^${route[1].route}$`);
-				if (route[1].route instanceof RegExp) return route[1].route;
+				if (typeof pageRoute.route === 'string') {
+					return new RegExp(`^${pageRoute.route}$`);
+				}
+				if (pageRoute.route instanceof RegExp) return pageRoute.route;
 				return false;
 			})();
-			if (!regex) continue;
-			if (regex.test(url) && route[1].template) {
+			if (!(regex instanceof RegExp) || !regex.test(url) || !pageRoute.template) continue;
+
+			// Simple String Replace and Go
+			if (typeof pageRoute.template === 'string') {
 				loadRoute({
-					...route[1],
-					template: window.location.hash.replace('#!', '').replace(regex, route[1].template),
+					...pageRoute,
+					template: window.location.hash.replace('#!', '').replace(regex, pageRoute.template),
 				});
 				return;
 			}
+
+			const routeObject = {
+				...pageRoute,
+			};
+
+			let routeTemplate;
+			// Template given as a function, takes results of String.match and returns a string or an object with at least key 'template'
+			if (typeof pageRoute.template === 'function') {
+				routeTemplate = pageRoute.template(...window.location.hash.replace('#!', '').match(regex));
+			} else {
+				routeTemplate = window.location.hash.replace('#!', '').replace(regex, pageRoute.template);
+			}
+			if (typeof routeTemplate === 'string') {
+				routeObject.template = routeTemplate;
+			} else if (typeof routeTemplate === 'object') {
+				Object.assign(routeObject, routeTemplate);
+			}
+			loadRoute(routeObject);
+			return;
 		}
 		loadRoute(yodasws.routes.get('404'));
 	};
