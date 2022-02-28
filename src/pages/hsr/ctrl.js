@@ -5,205 +5,219 @@ const exits85 = [
 	{
 		mile: 8,
 		name: 'NC 161, Kings Mountain',
-		carsFromPriorExit: 47.5e3,
+		carsNorthboundApproach: 47.5e3,
+		carsNorthboundExitHere: 1.5e3,
+		carsSouthboundExitHere: 2.5e3,
+		carsNorthboundEnterHere: 2e3,
+		carsSouthboundEnterHere: 1.6e3,
 	},
 	{
 		mile: 10,
 		name: 'US 74, 29, Kings Mountain',
-		carsFromPriorExit: 49e3,
-		carsExitHere: 1e3,
+		carsNorthboundApproach: 49e3,
+		carsNorthboundExitHere: 0.1e3 + 0.95e3,
+		carsSouthboundExitHere: 15e3 + 0.1e3,
+		carsNorthboundEnterHere: 15e3 + 500,
+		carsSouthboundEnterHere: 450 + 750,
 	},
 	{
 		mile: 13,
 		name: 'Bessemer City',
-		carsFromPriorExit: 80e3,
+		carsNorthboundApproach: 80e3,
 	},
 	{
 		mile: 14,
 		name: 'NC 274, W Gastonia',
-		carsFromPriorExit: 85e3,
+		carsNorthboundApproach: 85e3,
 	},
 	{
 		mile: 17,
 		name: 'US 321, Gastonia',
-		carsFromPriorExit: 93.5e3,
+		carsNorthboundApproach: 93.5e3,
 	},
 	{
 		mile: 19,
 		name: 'NC 7, E Gastonia',
-		carsFromPriorExit: 113e3,
+		carsNorthboundApproach: 113e3,
 	},
 	{
 		mile: 20,
 		name: 'NC 279, New Hope Rd, Dallas',
-		carsFromPriorExit: 123e3,
+		carsNorthboundApproach: 123e3,
 	},
 	{
 		mile: 21,
 		name: 'Cox Rd, Ranlo',
-		carsFromPriorExit: 124e3,
+		carsNorthboundApproach: 124e3,
 	},
 	{
 		mile: 22,
 		name: 'Cramerton, Lowell',
-		carsFromPriorExit: 127e3,
+		carsNorthboundApproach: 127e3,
 	},
 	{
 		mile: 23,
 		name: 'NC 7, Lowell, McAdenville',
-		carsFromPriorExit: 137e3,
+		carsNorthboundApproach: 137e3,
 	},
 	{
 		mile: 26,
 		name: 'Mt Holly, Belmont',
-		carsFromPriorExit: 139e3,
+		carsNorthboundApproach: 139e3,
 	},
 	{
 		mile: 27,
 		name: 'NC 273, Belmont, Mt Holly',
-		carsFromPriorExit: 138e3,
+		carsNorthboundApproach: 138e3,
 	},
 	{
 		mile: 29,
 		name: 'Sam Wilson Rd',
-		carsFromPriorExit: 148e3,
+		carsNorthboundApproach: 148e3,
 	},
 	{
 		mile: 30,
 		name: 'I-485, Pineville, Huntersville',
-		carsFromPriorExit: 149e3,
+		carsNorthboundApproach: 149e3,
 	},
 	{
 		mile: 32,
 		name: 'Little Rock Rd, CLT Airport',
-		carsFromPriorExit: 116e3,
+		carsNorthboundApproach: 116e3,
 	},
 	{
 		mile: 33,
 		name: 'Billy Graham Pkwy',
-		carsFromPriorExit: 120e3,
+		carsNorthboundApproach: 120e3,
 	},
 	{
 		mile: 34,
 		name: 'NC 27, Freedom Dr, Tuckaseegee Rd',
-		carsFromPriorExit: 127e3,
+		carsNorthboundApproach: 127e3,
 	},
 	{
 		mile: 35,
 		name: 'Glenwood Dr',
-		carsFromPriorExit: 137e3,
+		carsNorthboundApproach: 137e3,
 	},
 	{
 		mile: 36,
 		name: 'NC 16, Brookshire Blvd',
-		carsFromPriorExit: 141e3,
+		carsNorthboundApproach: 141e3,
 	},
 	{
 		mile: 37,
 		name: 'Beatties Ford Rd',
-		carsFromPriorExit: 129e3,
+		carsNorthboundApproach: 129e3,
 	},
 	{
 		mile: 38,
 		name: 'I-77, US 21',
-		carsFromPriorExit: 131e3,
+		carsNorthboundApproach: 131e3,
+		carsNorthboundExitHere: 2.2e3 + 7.4e3,
+		carsSouthboundExitHere: 4.2e3 + 31.5e3,
+		carsNorthboundEnterHere: 3e3 + 22.5e3,
+		carsSouthboundEnterHere: 1.5e3 + 7.6e3,
 	},
 	{
 		mile: 39,
 		name: 'Statesville Ave/Rd',
-		carsFromPriorExit: 162e3,
+		carsNorthboundApproach: 162e3,
 	},
 	{
 		mile: 40,
 		name: 'Graham St',
-		carsFromPriorExit: 173e3,
+		carsNorthboundApproach: 173e3,
 	},
 	{
 		mile: 41,
 		name: 'Sugar Creek Rd',
-		carsFromPriorExit: 175e3,
+		carsNorthboundApproach: 175e3,
 	},
 	{
 		mile: 42,
 		name: 'To US 29, To NC 49',
-		carsFromPriorExit: 172e3,
+		carsNorthboundApproach: 172e3,
 	},
 	{
 		mile: 43,
 		name: 'University City Blvd, Ikea Blvd',
-		carsFromPriorExit: 156e3,
+		carsNorthboundApproach: 156e3,
 	},
 	{
 		mile: 45,
 		name: 'NC 24, W.T. Harris Blvd',
-		carsFromPriorExit: 144e3,
+		carsNorthboundApproach: 144e3,
 	},
 	{
 		mile: 46,
 		name: 'Mallard Creek Church Rd',
-		carsFromPriorExit: 152e3,
+		carsNorthboundApproach: 152e3,
 	},
 	{
 		mile: 48,
 		name: 'I-485, Pineville, Matthews',
-		carsFromPriorExit: 150e3,
+		carsNorthboundApproach: 150e3,
 	},
 	{
 		mile: 49,
 		name: 'Speedway Blvd, Concord Mills Blvd',
-		carsFromPriorExit: 160e3,
+		carsNorthboundApproach: 160e3,
 	},
 	{
 		mile: 52,
 		name: 'Poplar Tent Rd',
-		carsFromPriorExit: 142e3,
+		carsNorthboundApproach: 142e3,
 	},
 	{
 		mile: 54,
 		name: 'George W Liles Pkwy, Kannapolis Pkwy',
-		carsFromPriorExit: 128e3,
+		carsNorthboundApproach: 128e3,
 	},
 	{
 		mile: 55,
 		name: 'NC 73, Concord, Huntersville',
-		carsFromPriorExit: 115e3,
+		carsNorthboundApproach: 115e3,
 	},
 	{
 		mile: 58,
 		name: 'US 29, Concord Blvd',
-		carsFromPriorExit: 108e3,
+		carsNorthboundApproach: 108e3,
 	},
 	{
 		mile: 60,
 		name: 'Copperfield Blvd, Dale Earnhardt Blvd',
-		carsFromPriorExit: 87.5e3,
+		carsNorthboundApproach: 87.5e3,
 	},
 	{
 		mile: 63,
 		name: 'Lane St',
-		carsFromPriorExit: 86e3,
+		carsNorthboundApproach: 86e3,
 	},
 	{
 		mile: 65,
 		name: 'Old Beatty Ford Rd, Landis',
-		carsFromPriorExit: 80e3,
+		carsNorthboundApproach: 80e3,
 	},
 	{
 		mile: 68,
 		name: 'NC 152, China Grove, Rockwell',
-		carsFromPriorExit: 80e3,
+		carsNorthboundApproach: 80e3,
 	},
 	{
 		mile: 70,
 		name: 'Webb Rd',
-		carsFromPriorExit: 89e3,
+		carsNorthboundApproach: 89e3,
 	},
 	{
 		mile: 71,
 		name: 'Peeler Rd',
-		carsFromPriorExit: 93e3,
+		carsNorthboundApproach: 93e3,
 	},
-];
+].map((exit) => {
+	exit.percentNorthboundExit = (exit.carsNorthboundExitHere || 0) / (exit.carsNorthboundApproach / 2);
+	return exit;
+});
 
 yodasws.page('pageHsr').setRoute({
 	title: 'High Speed Rail',
@@ -236,10 +250,13 @@ yodasws.page('pageHsr').setRoute({
 		.attr('cy', d => y(d.mile));
 
 	// Add Cars
-	let dCars = [];
+	let dCars = Array.from({ length: exits85[0].carsNorthboundApproach / 1e3 }, () => ({
+		x: 0,
+		y: 0,
+	}));
 	exits85.forEach(exit => {
-		if (exit.carsFromPriorExit > 0) {
-			dCars = dCars.concat(Array.from({ length: exit.carsFromPriorExit / 40e3 }, () => ({
+		if (exit.carsNorthboundEnterHere > 0) {
+			dCars = dCars.concat(Array.from({ length: exit.carsNorthboundEnterHere / 1e3 }, () => ({
 				x: exit.mile,
 				y: 0,
 			})));
@@ -269,6 +286,10 @@ yodasws.page('pageHsr').setRoute({
 	// Add to Page
 	document.querySelector('main').append(svg.node());
 
+	// For testing, use exit 38
+	const exit38 = exits85.find(d => d.mile = 38);
+	console.log('Sam, exit chance:', (exit38.percentNorthboundExit * 100).toFixed(2));
+
 	// Run cars along path of exits
 	const sim = d3.forceSimulation(dCars).alphaDecay(0).velocityDecay(0);
 	sim.force('forceX', d3.forceX(exitRange[1] + 15).strength(1e-6));
@@ -276,17 +297,17 @@ yodasws.page('pageHsr').setRoute({
 	sim.on('tick', () => {
 		// Remove cars at end of highway
 		while (dCars.length > 0 && dCars[dCars.length - 1].x >= exitRange[1]) {
-			console.log('Sam, vx:', dCars.pop().vx);
+			dCars.pop();
 		}
-		console.log('Sam, cars:', dCars.length);
 
 		// TODO: Check to add cars at interchanges
+		// carsNorthboundEnterHere
 
 		// TODO: Check each car to exit
 		const carsToRemove = [];
 		dCars = dCars.filter(car => {
 			// Remove some cars at exit 38
-			return !(car.x < 38 && car.x + car.vx >= 38 && Math.random() < 0.25);
+			return !(car.x < exit38.mile && car.x + car.vx >= exit38.mile && Math.random() < exit38.percentNorthboundExit);
 		});
 
 		// Update car positions
