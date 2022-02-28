@@ -10,9 +10,9 @@
 	}
 
 	g.exits > circle {
-		stroke-width: 1.5px;
+		stroke-width: 3px;
 		fill: none;
-		r: 2px;
+		r: 5px;
 
 		&:nth-of-type(3n) {
 			stroke: #249E57;
@@ -27,8 +27,10 @@
 		}
 
 		&.e38 {
-			fill: blue;
-			r: 3px;
+			stroke-width: 0;
+			stroke: none;
+			fill: #249E57;
+			r: 8px;
 		}
 	}
 

@@ -1,5 +1,6 @@
 const height = 500;
 const width = 600;
+const scale = 1;
 
 const exits85 = [
 	{
@@ -34,6 +35,10 @@ const exits85 = [
 		mile: 17,
 		name: 'US 321, Gastonia',
 		carsNorthboundApproach: 93.5e3,
+		carsNorthboundExitHere: 6e3,
+		carsSouthboundExitHere: 16e3,
+		carsNorthboundEnterHere: 13e3,
+		carsSouthboundEnterHere: 6.3e3,
 	},
 	{
 		mile: 19,
@@ -79,6 +84,10 @@ const exits85 = [
 		mile: 30,
 		name: 'I-485, Pineville, Huntersville',
 		carsNorthboundApproach: 149e3,
+		carsNorthboundExitHere: 22.5e3,
+		carsSouthboundExitHere: 4.6e3 + 8.4e3,
+		carsNorthboundEnterHere: 3.7e3 + 9e3,
+		carsSouthboundEnterHere: 24e3,
 	},
 	{
 		mile: 32,
@@ -158,6 +167,10 @@ const exits85 = [
 		mile: 48,
 		name: 'I-485, Pineville, Matthews',
 		carsNorthboundApproach: 150e3,
+		carsNorthboundExitHere: 15e3 + 14.5e3,
+		carsSouthboundExitHere: 14e3 + 13e3,
+		carsNorthboundEnterHere: 13e3 + 12.5e3,
+		carsSouthboundEnterHere: 7.8e3 + 15e3,
 	},
 	{
 		mile: 49,
@@ -227,8 +240,9 @@ yodasws.page('pageHsr').setRoute({
 }).on('load', () => {
 	// Transform functions
 	const exitRange = d3.extent(exits85, d => d.mile);
-	const x = d3.scaleLinear(exitRange, [-width / 2, width / 2]);
-	const y = d3.scaleLinear(exitRange, [height / 2, -height / 2]);
+	// TODO: Adjust x/y coordinates based on lane number
+	const x = d3.scaleLinear(exitRange, [-width / scale, width / scale]);
+	const y = d3.scaleLinear(exitRange, [height / scale, -height / scale]);
 
 	// Build SVG
 	const svg = d3.create('svg')
@@ -241,6 +255,7 @@ yodasws.page('pageHsr').setRoute({
 	// Plot Exits
 	const gExits = gZoom.append('g')
 		.classed('exits', true);
+	// TODO: Add text with exit number and name
 	const ptExits = gExits
 		.selectAll('circle')
 		.data(exits85, d => d.mile)
@@ -251,12 +266,14 @@ yodasws.page('pageHsr').setRoute({
 
 	// Add Cars
 	let dCars = Array.from({ length: exits85[0].carsNorthboundApproach / 1e3 }, () => ({
+		lane: 0,
 		x: 0,
 		y: 0,
 	}));
 	exits85.forEach(exit => {
 		if (exit.carsNorthboundEnterHere > 0) {
 			dCars = dCars.concat(Array.from({ length: exit.carsNorthboundEnterHere / 1e3 }, () => ({
+				lane: 0,
 				x: exit.mile,
 				y: 0,
 			})));
@@ -265,10 +282,6 @@ yodasws.page('pageHsr').setRoute({
 
 	const gCars = gZoom.append('g')
 		.classed('cars', true);
-	let ptCars = gCars
-		.selectAll('circle')
-		.data(dCars)
-		.join('circle');
 
 	// Zoom Control
 	const zoom = d3.zoom()
@@ -293,7 +306,7 @@ yodasws.page('pageHsr').setRoute({
 	// Run cars along path of exits
 	const sim = d3.forceSimulation(dCars).alphaDecay(0).velocityDecay(0);
 	sim.force('forceX', d3.forceX(exitRange[1] + 15).strength(1e-6));
-	sim.force('lineUp', forceLineUp(1 / 5));
+	sim.force('lineUp', forceLineUp(1 / 5 * (scale / 2)));
 	sim.on('tick', () => {
 		// Remove cars at end of highway
 		while (dCars.length > 0 && dCars[dCars.length - 1].x >= exitRange[1]) {
@@ -306,15 +319,16 @@ yodasws.page('pageHsr').setRoute({
 		// TODO: Check each car to exit
 		const carsToRemove = [];
 		dCars = dCars.filter(car => {
+			// TODO: Find next exit to test for filter
 			// Remove some cars at exit 38
 			return !(car.x < exit38.mile && car.x + car.vx >= exit38.mile && Math.random() < exit38.percentNorthboundExit);
 		});
 
 		// Update car positions
-		ptCars = gCars
-			.selectAll('circle')
+		gCars.selectAll('circle')
 			.data(dCars)
 			.join('circle')
+		// TODO: Adjust x/y coordinates based on lane number
 			.attr('cx', d => x(d.x))
 			.attr('cy', d => y(d.x));
 		if (dCars.length === 0) sim.stop();
