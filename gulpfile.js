@@ -58,7 +58,7 @@ const argv = require('yargs')
 	.command('transfer-files', 'Transfer all static assets and resources to docs folder')
 	.command('watch', 'Watch files for changes to recompile')
 	.help('?')
-	.epilog(' ©2017–2021 Samuel B Grundman')
+	.epilog(' ©2017–2025 Samuel B Grundman')
 	.argv;
 
 const gulp = require('gulp');
@@ -75,7 +75,6 @@ const plugins = {
 			'gulp-eslint': 'lintES',
 			'gulp-babel': 'compileJS',
 			'gulp-order': 'sort',
-			'gulp-sass': 'compileSass',
 			'gulp-file': 'newFile',
 		},
 		postRequireTransforms: {
@@ -85,6 +84,7 @@ const plugins = {
 		},
 	}),
 	replaceString: require('@yodasws/gulp-pattern-replace'),
+	compileSass: require('gulp-sass')(require('sass')),
 	webpack: require('webpack-stream'),
 	named: require('vinyl-named'),
 };
@@ -116,9 +116,8 @@ const options = {
 		]
 	},
 	compileSass: {
-		importer: require('@mightyplow/sass-dedup-importer'),
-		outputStyle: 'compressed',
-		includePaths: [
+		style: 'compressed',
+		loadPaths: [
 			'node_modules',
 			'src/scss',
 		],
@@ -129,7 +128,7 @@ const options = {
 	compileHTML: {
 		collapseWhitespace: true,
 		decodeEntities: true,
-		keepClosingSlash: true,
+		keepClosingSlash: false,
 		removeComments: true,
 		removeRedundantAttributes: true,
 		removeScriptTypeAttributes: true,
@@ -381,26 +380,25 @@ const options = {
 function runTasks(task) {
 	const fileType = task.fileType || 'static';
 	let stream = gulp.src(task.src);
-	const tasks = task.tasks;
-
-	// Output Linting Results
-	[
-		'lintSass',
-		'lintES'
-	].forEach((task) => {
-		if (tasks.includes(task)) {
-			let option = options[task] || {};
-			if (option[fileType]) option = option[fileType];
-			stream = stream.pipe(plugins[task](option));
-			stream = stream.pipe(plugins[task].format());
-		}
-	});
 
 	// Run each task
-	if (tasks.length) tasks.forEach((subtask) => {
-		if (['lintSass', 'lintES'].includes(subtask)) return;
+	(task.tasks || []).forEach((subtask) => {
 		let option = options[subtask] || {};
 		if (option[fileType]) option = option[fileType];
+		if (['lintSass', 'lintES'].includes(subtask)) {
+			stream = stream.pipe(plugins[subtask](option));
+			// Linting requires special formatting
+			stream = stream.pipe(plugins[subtask].format());
+			return;
+		}
+		if (subtask === 'compileSass') {
+			stream = stream.pipe(plugins[subtask].sync(option)).on('error', function (error) {
+				console.error('Error!');
+				console.log(JSON.stringify(error, '  '));
+				this.emit('end');
+			});
+			return;
+		}
 		stream = stream.pipe(plugins[subtask](option)).on('error', function (error) {
 			console.error('Error!', error);
 			this.emit('end');
@@ -415,6 +413,7 @@ function runTasks(task) {
 	{
 		name: 'compile:sass',
 		src: [
+			'src/main.scss',
 			'src/**/*.{sa,sc,c}ss',
 			'!**/*.min.css',
 			'!**/min.css',
@@ -485,7 +484,6 @@ function runTasks(task) {
 			'./src/**/*.png',
 			'./src/**/*.ttf',
 		],
-		tasks: [],
 	},
 ].forEach((task) => {
 	gulp.task(task.name, () => {
