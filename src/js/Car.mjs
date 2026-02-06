@@ -1,4 +1,4 @@
-function Car(name, options = {}) {
+export default function Car(name, options = {}) {
 	Object.assign(this, {
 		strokeWidth: 1,
 		r: 4,
@@ -24,5 +24,3 @@ function Car(name, options = {}) {
 }
 Object.defineProperties(Car.prototype, {
 });
-
-module.exports = Car;

@@ -1,0 +1,37 @@
+# EditorConfig helps maintain consistent coding styles across editors and IDEs
+root = true
+
+# Default settings for all files
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Use tabs for indentation (your project standard)
+indent_style = tab
+indent_size = tab
+
+# Prevent editors from auto-wrapping chained calls or long lines
+max_line_length = off
+
+# JavaScript, JSON, and MJS files
+[*.{js,mjs,json}]
+quote_type = single
+indent_style = tab
+indent_size = tab
+
+# CSS and SCSS files
+[*.{css,scss}]
+quote_type = double
+indent_style = tab
+indent_size = tab
+
+# Markdown files (don’t trim whitespace — needed for formatting)
+[*.md]
+trim_trailing_whitespace = false
+
+# YAML files (rare, but YAML requires spaces)
+[*.yml]
+indent_style = space
+indent_size = 2

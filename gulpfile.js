@@ -3,7 +3,7 @@
  */
 'use strict';
 
-const fs = require('fs');
+import fs from 'fs';
 const packageJson = JSON.parse(fs.readFileSync('./package.json'));
 
 function camelCase() {
@@ -17,16 +17,19 @@ function camelCase() {
 	}).join('');
 }
 
-const argv = require('yargs')
+import { hideBin } from 'yargs/helpers';
+import yargs from 'yargs';
+const argv = yargs(hideBin(process.argv))
 	.usage("\n\x1b[1mUsage:\x1b[0m gulp \x1b[36m<command>\x1b[0m \x1b[34m[options]\x1b[0m")
-	.command('init', 'Initialize app', {
-		name: {
-			describe: 'Name for your app',
-			required: true,
-			alias: 'n',
+	.command('*', 'Compile files, run the server, and watch for changes to files', {
+		port: {
+			describe: 'The server port to listen to',
+			type: 'number',
+			default: 3000,
+			alias: 'p',
 		},
 	})
-	.command(['serve', '*'], 'Compile files and start server', {
+	.command('serve', 'Run server', {
 		port: {
 			describe: 'The server port to listen to',
 			type: 'number',
@@ -36,15 +39,16 @@ const argv = require('yargs')
 	})
 	.command('compile', 'Compile all files and output to docs folder')
 	.command('generate:page', 'Generate a new page', {
+		section: {
+			describe: 'Section under which to add page',
+			required: false,
+			default: '',
+			alias: 's',
+		},
 		name: {
 			describe: 'Name for your new page',
 			required: true,
 			alias: 'n',
-		},
-		section: {
-			describe: 'Section under which to add page',
-			default: '',
-			alias: 's',
 		},
 	})
 	.command('generate:section', 'Generate a new section', {
@@ -55,49 +59,59 @@ const argv = require('yargs')
 		},
 	})
 	.command('lint', 'Lint all JavaScript and Sass/SCSS files')
+	.command('lint:js', 'Lint all JavaScript files')
+	.command('lint:css', 'Lint all Sass/SCSS files')
+	.command('test', 'Run tests', {
+		files: {
+			describe: 'Files or glob pattern of test files to run',
+			type: 'string',
+		},
+	})
 	.command('transfer-files', 'Transfer all static assets and resources to docs folder')
 	.command('watch', 'Watch files for changes to recompile')
 	.help('?')
 	.epilog(' ©2017–2025 Samuel B Grundman')
 	.argv;
 
-const gulp = require('gulp');
-const path = require('path');
-const fileExists = require('file-exists');
+import gulp from 'gulp';
+import path from 'path';
+import fileExists from 'file-exists';
 
-const plugins = {
-	...require('gulp-load-plugins')({
-		rename: {
-			'gulp-autoprefixer': 'prefixCSS',
-			'gulp-run-command': 'cli',
-			'gulp-sass-lint': 'lintSass',
-			'gulp-htmlmin': 'compileHTML',
-			'gulp-eslint': 'lintES',
-			'gulp-babel': 'compileJS',
-			'gulp-order': 'sort',
-			'gulp-file': 'newFile',
+import * as sass from 'sass';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const plugins = require('gulp-load-plugins')({
+	rename: {
+		'gulp-autoprefixer': 'prefixCSS',
+		'gulp-run-command': 'cli',
+		'gulp-eslint-new': 'lintES',
+		'gulp-htmlmin': 'compileHTML',
+		'gulp-babel': 'compileJS',
+		'gulp-order': 'sort',
+		'gulp-file': 'newFile',
+		'gulp-sass': 'compileSass',
+	},
+	postRequireTransforms: {
+		cli(gulpRunCommand) {
+			return gulpRunCommand.default;
 		},
-		postRequireTransforms: {
-			cli(cli) {
-				return cli.default;
-			},
+		compileSass(gulpSass) {
+			return gulpSass(sass);
 		},
-	}),
-	replaceString: require('@yodasws/gulp-pattern-replace'),
-	compileSass: require('gulp-sass')(require('sass')),
-	webpack: require('webpack-stream'),
-	named: require('vinyl-named'),
-};
+	},
+});
+plugins.replaceString = require('@yodasws/gulp-pattern-replace');
+plugins.webpack = require('webpack-stream');
+plugins.named = require('vinyl-named');
 plugins['connect.reload'] = plugins.connect.reload;
+
+import lintCss from '@yodasws/gulp-stylelint';
+plugins.lintCss = lintCss;
 
 // more options at https://github.com/postcss/autoprefixer#options
 const browsers = [
 	// browser strings detailed at https://github.com/ai/browserslist#queries
-	'last 2 Firefox versions',
-	'last 2 Chrome versions',
-	'Safari >= 10',
-	'ie_mob >= 11',
-	'ie >= 11',
+	'defaults',
 ];
 
 const options = {
@@ -113,7 +127,7 @@ const options = {
 					targets: browsers,
 				},
 			],
-		]
+		],
 	},
 	compileSass: {
 		style: 'compressed',
@@ -134,131 +148,6 @@ const options = {
 		removeScriptTypeAttributes: true,
 		removeStyleLinkTypeAttributes: true,
 		useShortDoctype: true,
-	},
-	lintES: {
-		parserOptions: {
-			sourceType: 'module',
-			ecmaVersion: 7,
-		},
-		env: {
-			browser: true,
-			es6: true,
-		},
-		rules: {
-
-'strict': [
-	2, 'global',
-],
-'indent': [
-	2, 'tab',
-],
-'space-before-function-paren': 0,
-'comma-dangle': 0,
-'no-console': 0,
-'no-undef': 0,
-'no-tabs': 0,
-'no-var': 2,
-'semi': 0,
-
-		},
-	},
-	lintSass: {
-		files: {
-			ignore: '**/*.min.css',
-		},
-		rules: {
-
-'extends-before-mixins': 1,
-'extends-before-declarations': 1,
-'placeholder-in-extend': 1,
-'mixins-before-declarations': 1,
-'one-declaration-per-line': 1,
-'empty-line-between-blocks': 1,
-'single-line-per-selector': 1,
-'no-attribute-selectors': 0,
-'no-color-hex': 0,
-'no-color-keywords': 0,
-'no-color-literals': 1,
-'no-combinators': 0,
-'no-css-comments': 0,
-'no-debug': 1,
-'no-disallowed-properties': 1,
-'no-duplicate-properties': [
-	1, { exclude: [
-		'display',
-	]}
-],
-'no-empty-rulesets': 0,
-'no-extends': 0,
-'no-ids': 1,
-'no-important': 1,
-'no-invalid-hex': 1,
-'no-mergeable-selectors': 1,
-'no-misspelled-properties': 1,
-'no-qualifying-elements': 0,
-'no-trailing-whitespace': 1,
-'no-trailing-zero': 1,
-'no-transition-all': 0,
-'no-universal-selectors': 0,
-'no-url-domains': 1,
-'no-url-protocols': 1,
-'no-vendor-prefixes': 1,
-'no-warn': 1,
-'property-units': 1,
-'declarations-before-nesting': 1,
-'force-attribute-nesting': 0,
-'force-element-nesting': 0,
-'force-pseudo-nesting': 0,
-'class-name-format': 1,
-'function-name-format': 1,
-'id-name-format': 1,
-'mixin-name-format': 1,
-'placeholder-name-format': 1,
-'variable-name-format': 1,
-'attribute-quotes': 1,
-'bem-depth': 1,
-'border-zero': 1,
-'brace-style': 1,
-'clean-import-paths': 1,
-'empty-args': 1,
-'hex-length': [
-	2, { style: 'long' }
-],
-'hex-notation': [
-	1, { style: 'uppercase' }
-],
-'indentation': [
-	2, { size: 'tab' }
-],
-'leading-zero': [
-	2, { include: true }
-],
-'max-line-length': 0,
-'max-file-line-count': 0,
-'nesting-depth': [
-	1, { 'max-depth': 4 }
-],
-'property-sort-order': 0,
-'pseudo-element': 1,
-'quotes': [
-	1, { style: 'double' }
-],
-'shorthand-values': 1,
-'url-quotes': 1,
-'variable-for-property': 1,
-'zero-unit': 1,
-'space-after-comma': 1,
-'space-before-colon': 1,
-'space-after-colon': 1,
-'space-before-brace': 1,
-'space-before-bang': 1,
-'space-after-bang': 1,
-'space-between-parens': 1,
-'space-around-operator': 1,
-'trailing-semicolon': 2,
-'final-newline': 2,
-
-		},
 	},
 	prefixCSS: {
 		cascade: false,
@@ -295,6 +184,11 @@ const options = {
 		port: argv.port,
 	},
 
+	lintCss: {
+		configFile: '.stylelint.config.mjs',
+		failAfterError: true,
+		fix: false,
+	},
 	sort: {
 		css: [
 			'scss/**/*.{sa,sc,c}ss',
@@ -310,7 +204,7 @@ const options = {
 	},
 	replaceString: {
 		js: {
-			pattern:/\/\* app\.json \*\//,
+			pattern: /\/\* app\.json \*\//,
 			replacement: () => {
 				// Read app.json to build site!
 				const site = require('./src/app.json');
@@ -352,12 +246,14 @@ const options = {
 						} catch (e) {}
 					});
 				});
-				let requires = 'const json = {};\n';
+				let requires = 'window.json = {};\n';
 				Object.keys(requiredFiles).forEach((i) => {
+					const reqPath = String(requiredFiles[i]).replace(/\\/g, '/');
 					if (Number.isNaN(Number.parseInt(i, 10))) {
-						requires += `json.${i} = `;
+						requires += `import ${i} from '../src/${reqPath}'; json.${i} = ${i};\n`;
+					} else {
+						requires += `import '../src/${reqPath}';\n`;
 					}
-					requires += `require('../src/${requiredFiles[i]}');\n`;
 				});
 				return requires;
 			},
@@ -370,6 +266,19 @@ const options = {
 		mode: 'production',
 		output: {
 			filename: '[name].js',
+		},
+		module: {
+			rules: [
+				{
+					test: /\.mjs$/,
+					use: {
+						loader: 'babel-loader',
+						options: {
+							presets: ['@babel/preset-env'],
+						},
+					},
+				},
+			],
 		},
 	},
 	ssi: {
@@ -385,24 +294,31 @@ function runTasks(task) {
 	(task.tasks || []).forEach((subtask) => {
 		let option = options[subtask] || {};
 		if (option[fileType]) option = option[fileType];
-		if (['lintSass', 'lintES'].includes(subtask)) {
-			stream = stream.pipe(plugins[subtask](option));
-			// Linting requires special formatting
-			stream = stream.pipe(plugins[subtask].format());
-			return;
-		}
 		if (subtask === 'compileSass') {
 			stream = stream.pipe(plugins[subtask].sync(option)).on('error', function (error) {
-				console.error('Error!');
-				console.log(JSON.stringify(error, '  '));
+				if (typeof error.messageFormatted === 'string') {
+					console.error('Error!', error.messageFormatted);
+				} else {
+					console.error('Error!');
+					console.log(JSON.stringify(error, '  '));
+				}
 				this.emit('end');
 			});
 			return;
 		}
 		stream = stream.pipe(plugins[subtask](option)).on('error', function (error) {
-			console.error('Error!', error);
+			if (typeof error.messageFormatted === 'string') {
+				console.error('Error!', error.messageFormatted);
+			} else {
+				console.error('Error!', error);
+			}
 			this.emit('end');
 		});
+		if (subtask === 'lintES') {
+			// Linting requires special formatting
+			stream = stream.pipe(plugins[subtask].format());
+			stream = stream.pipe(plugins[subtask].failAfterError());
+		}
 	});
 
 	// Output Files
@@ -419,7 +335,7 @@ function runTasks(task) {
 			'!**/min.css',
 		],
 		tasks: [
-			'lintSass',
+			'lintCss',
 			'sort',
 			'concat',
 			'compileSass',
@@ -480,6 +396,7 @@ function runTasks(task) {
 		name: 'transfer:assets',
 		src: [
 			'./src/**/*.jp{,e}g',
+			// './src/**/*.json',
 			'./src/**/*.gif',
 			'./src/**/*.png',
 			'./src/**/*.ttf',
@@ -491,27 +408,39 @@ function runTasks(task) {
 	});
 });
 
-gulp.task('lint:sass', () => {
+function lintSass() {
 	return gulp.src([
-		'src/**/*.{sa,sc,c}ss',
-		'!**/*.min.css',
-		'!**/min.css'
-	])
-		.pipe(plugins.lintSass(options.lintSass))
-		.pipe(plugins.lintSass.format());
-});
+		argv.files || 'src/**/*.{sass,scss,css}',
+		'!src/**/*.min.css',
+	]).pipe(plugins.lintCss(options.lintCss || {}));
+}
 
-gulp.task('lint:js', () => {
+export function lintTests() {
 	return gulp.src([
-		'src/**/*.js',
+		argv.files || '{src,test}/**/*{-,.}test.{js,mjs}',
 		'!**/*.min.js',
 		'!**/min.js',
 	])
-		.pipe(plugins.lintES(options.lintES))
+		.pipe(plugins.lintES(options.lintES || {}))
 		.pipe(plugins.lintES.format());
-});
+};
 
-gulp.task('lint', gulp.parallel('lint:sass', 'lint:js'));
+function lintJs() {
+	return gulp.src([
+		'src/**/*.{js,mjs}',
+		'!src/**/*{-,.}test.{js,mjs}',
+		'!src/json/**/*.mjs',
+		'!**/*.min.js',
+		'!**/min.js',
+	])
+		.pipe(plugins.lintES(options.lintES || {}))
+		.pipe(plugins.lintES.format());
+};
+
+export { lintJs as 'lint:js' };
+export { lintSass as 'lint:css' };
+
+gulp.task('lint', gulp.parallel(lintSass, lintJs));
 
 gulp.task('transfer:fonts', () => gulp.src([
 	'./node_modules/font-awesome/fonts/fontawesome-webfont.*',
@@ -531,12 +460,23 @@ gulp.task('transfer-files', gulp.parallel(
 	'transfer:res',
 ));
 
+gulp.task('test:js', gulp.series(
+	plugins.cli([
+		`node --test ${argv.files || ''}`,
+	]),
+));
+
+gulp.task('test', gulp.parallel(
+	'test:js',
+));
+
 gulp.task('bundle:js', gulp.series(
 	'build:js',
 	'webpack:js',
 ));
 
 gulp.task('compile:js', gulp.series(
+	'test:js',
 	'bundle:js',
 	'minify:js',
 ));
@@ -554,9 +494,9 @@ gulp.task('watch', (done) => {
 	gulp.watch('./lib/*.js', {
 		usePolling: true,
 	}, gulp.series('transfer:res', 'reload'));
-	gulp.watch('./src/**/*.{js,json}', {
+	gulp.watch('./src/**/*.{js,mjs,json}', {
 		usePolling: true,
-	}, gulp.series('compile:js', 'reload'));
+	}, gulp.series(lintJs, 'compile:js', 'reload'));
 	gulp.watch('./src/**/*.html', {
 		usePolling: true,
 	}, gulp.series('compile:html', 'reload'));
@@ -593,7 +533,6 @@ gulp.task('generate:page', gulp.series(
 	canonicalRoute: '/${argv.sectionCC}${argv.nameCC}/',
 	route: '/${argv.sectionCC}${argv.nameCC}/?',
 }).on('load', () => {
-	console.log('Page loaded!');
 });\n`
 			return plugins.newFile(`ctrl.js`, str, { src: true })
 				.pipe(gulp.dest(`./src/pages/${argv.sectionCC}${argv.nameCC}`));
@@ -626,7 +565,7 @@ gulp.task('generate:section', gulp.series(
 		},
 		() => {
 			const str = `<h2>${argv.name}</h2>\n`;
-			return plugins.newFile(`${argv.nameCC}.html`, str, { src: true })
+			return plugins.newFile('index.html', str, { src: true })
 				.pipe(gulp.dest(`./src/pages/${argv.nameCC}`));
 		},
 		() => {
@@ -636,7 +575,7 @@ gulp.task('generate:section', gulp.series(
 	template(match, ...p) {
 		const path = p.join('/').replace(/\\/+/g, '/').replace(/^\\\/|\\\/$/g, '').split('/').filter(p => p != '');
 		if (path.length === 0) {
-			return 'pages/${argv.nameCC}/${argv.nameCC}.html';
+			return 'pages/${argv.nameCC}/index.html';
 		}
 		return {
 			canonicalRoute: '/${argv.nameCC}/' + path.join('/') + '/',

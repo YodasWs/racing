@@ -2,7 +2,7 @@ const x = 0;
 const y = 1;
 const z = 2;
 
-function forceRailingBounce(rails) {
+export default function forceRailingBounce(rails) {
 	let nodes = [];
 	function force(alpha) {
 		rails.forEach((rail) => {
@@ -175,5 +175,3 @@ function closestPoint(pathNode, point) {
 		best,
 	};
 }
-
-module.exports = forceRailingBounce;

@@ -4,7 +4,7 @@ const x = 0;
 const y = 1;
 const z = 2;
 
-function TrackPiece(options) {
+export default function TrackPiece(options) {
 	Object.assign(this, {
 		gradient: [1, 0],
 		delta: [0, 0],
@@ -120,5 +120,3 @@ function TrackPiece(options) {
 		return force;
 	})();
 }
-
-module.exports = TrackPiece;

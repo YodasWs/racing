@@ -1,5 +1,7 @@
+import TrackPiece from './TrackPiece.mjs';
+import forceRailingBounce from './forceRailingBounce.mjs';
+
 const SVG = 'http://www.w3.org/2000/svg';
-const TrackPiece = require('../js/TrackPiece');
 const x = 0;
 const y = 1;
 const z = 2;
@@ -81,7 +83,6 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.svg.appendChild(this.gCars);
 			}
 			this.simulation.force('fCollide', d3.forceCollide(car => car.radius));
-			const forceRailingBounce = require('../js/forceRailingBounce');
 			this.simulation.force('fRailing', forceRailingBounce(this.rails));
 
 			// Place Cars on Starting Line
@@ -486,4 +487,4 @@ Object.defineProperties(RaceTrack.prototype, {
 	},
 });
 
-module.exports = RaceTrack;
+export default RaceTrack;

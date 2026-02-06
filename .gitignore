@@ -2,7 +2,7 @@
 *.swp
 *~
 
-# Sam's Super Awesome Webtoolkit
+# Build directories
 bundle
 build
 
@@ -52,9 +52,6 @@ jspm_packages/
 # TypeScript v1 declaration files
 typings/
 
-# TypeScript cache
-*.tsbuildinfo
-
 # Optional npm cache directory
 .npm
 
@@ -72,6 +69,16 @@ typings/
 
 # Output of 'npm pack'
 *.tgz
+
+# Yarn
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+package-lock.json
 
 # Yarn Integrity file
 .yarn-integrity

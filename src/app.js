@@ -5,9 +5,8 @@ const y = 1;
 const z = 2;
 const strokeWidth = 1;
 
-const TrackPiece = require('../src/js/TrackPiece');
-const RaceTrack = require('../src/js/RaceTrack');
-const Car = require('../src/js/Car');
+import RaceTrack from '../src/js/RaceTrack.mjs';
+import Car from '../src/js/Car.mjs';
 
 yodasws.page('home').setRoute({
 	template: 'pages/home.html',
@@ -526,8 +525,8 @@ function buildReplay(raceTrack, {
 					plane.height * (1 / 2 + 1 / 2),
 				];
 			return [
-					plane.width * (1 / 2 + 1 / 6),
-					plane.height * (1 / 2 + 1 / 6),
+				plane.width * (1 / 2 + 1 / 6),
+				plane.height * (1 / 2 + 1 / 6),
 			];
 		})();
 
