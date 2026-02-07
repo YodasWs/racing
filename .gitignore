@@ -2,6 +2,15 @@
 *.swp
 *~
 
+# Don't publish simulation and video production pages
+docs/pages/Renderer
+docs/pages/RaceSetup
+docs/pages/TrackBuilder
+docs/pages/RaceSimulator
+docs/pages/RaceValidator
+docs/pages/EnvironmentBuilder
+docs/pages/Renderer
+
 # Build directories
 bundle
 build

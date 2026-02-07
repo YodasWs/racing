@@ -149,9 +149,12 @@ Object.defineProperties(RaceTrack.prototype, {
 		},
 	},
 	moveCars: {
+		// Move Cars!
 		value() {
-			// Move Cars!
-			d3.selectAll('#gCars circle').attr('cx', d => d.x).attr('cy', d => d.y);
+			if (this.tick % 20 === 0) {
+				d3.selectAll('#gCars circle').attr('cx', d => d.x).attr('cy', d => d.y);
+			}
+
 			this.simulation.nodes().forEach((car, i, nodes) => {
 
 				/*
@@ -423,8 +426,6 @@ Object.defineProperties(RaceTrack.prototype, {
 			const ol = document.querySelector('ol#positions');
 			this.cars.slice().sort((a, b) => {
 				if (a.time.length === 0 && b.time.length === 0) return 0;
-				if (a.time.length === 0) return 1;
-				if (b.time.length === 0) return -1;
 				if (a.time.length > b.time.length) return -1;
 				if (a.time.length < b.time.length) return 1;
 				if (a.time[a.time.length - 1].time > b.time[b.time.length - 1].time) return 1;

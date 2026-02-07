@@ -7,5 +7,7 @@
 		"cOval": "circuits/oval"
 	},
 	"pages": [
+		"RaceSimulator",
+		"Renderer"
 	]
 }
