@@ -1,6 +1,24 @@
 import RaceTrack from '../../js/RaceTrack.mjs';
 import Car from '../../js/Car.mjs';
 
+const worker = new Worker('./pages/RaceSimulator/simulator.worker.js');
+worker.addEventListener('message', (event) => {
+	switch (event.data.type) {
+		case 'debug':
+			// Update SVG
+			d3.select('svg #gCars').selectAll('circle')
+				.data(event.data.detail).classed('car', true)
+				.attr('fill', d => d.color).attr('stroke', d => d.color2)
+				.attr('stroke-width', car => car.strokeWidth)
+				.attr('r', car => car.r).attr('cx', d => d.x).attr('cy', d => d.y);
+			break;
+		case 'endRace':
+			// TODO: Display final standings
+			// TODO: Build download link
+			break;
+	}
+});
+
 const SVG = 'http://www.w3.org/2000/svg';
 const x = 0;
 const y = 1;
@@ -14,9 +32,8 @@ yodasws.page('pageRaceSimulator').setRoute({
 	route: '/RaceSimulator/?',
 }).on('load', () => {
 	const svg = document.querySelector('svg#scene');
-
-	// TODO: Load raceTrack from JSON file
-	let raceTrack = new RaceTrack(svg, [
+	// Show track layout and starting grid
+	const cars = [
 		new Car('Alice, TX', {
 			color: 'lightgreen',
 			color2: 'orange',
@@ -127,9 +144,13 @@ yodasws.page('pageRaceSimulator').setRoute({
 			strokeWidth: 1,
 			rgb: [0xB4, 0x9C, 0x26],
 		}),
-	].sort(() => 0 && Math.sign(Math.random() * 2 - 1)), Object.assign({}, json.cSuzuka, {
+	].sort(() => 0 && Math.sign(Math.random() * 2 - 1));
+
+	// TODO: Load raceTrack from JSON file
+	const raceTrack = new RaceTrack(svg, cars, Object.assign({}, json.cSuzuka, {
 		laps: 2,
 	}));
+	delete raceTrack.trackPieces;
 
 	raceTrack.simulation.stop();
 	raceTrack.init();
@@ -142,39 +163,50 @@ yodasws.page('pageRaceSimulator').setRoute({
 			.attr('r', car => car.r).attr('cx', d => d.x).attr('cy', d => d.y);
 	}
 
-	document.getElementById('btnStart').focus();
-	document.getElementById('btnStart').addEventListener('click', (evt) => {
-		evt.preventDefault();
-		switch (evt.currentTarget.innerText) {
-			case 'Start':
-				console.log('Sam, start!');
-				raceTrack.simulation.stop();
-				raceTrack.init();
-				raceTrack.simulation.alpha(1);
-				setTimeout((e) => {
-					raceTrack.simulation.restart();
-					e.innerText = 'Pause';
-					e.disabled = false;
-					e.focus();
-				}, 500, evt.currentTarget);
-				evt.currentTarget.disabled = true;
-				break;
-			case 'Pause':
-				raceTrack.simulation.stop();
-				evt.currentTarget.innerText = 'Play';
-				break;
-			case 'Play':
-				raceTrack.simulation.restart();
-				evt.currentTarget.innerText = 'Pause';
-				break;
-		}
-	});
-
-	if (document.getElementById('btnTick') instanceof Element) {
-		document.getElementById('btnTick').addEventListener('click', (evt) => {
+	const btnStart = document.getElementById('btnStart');
+	if (btnStart instanceof HTMLButtonElement) {
+		btnStart.focus();
+		worker.addEventListener('message', (event) => {
+			switch (event.data.type) {
+				case 'raceResumed':
+				case 'raceStarted':
+					btnStart.innerText = 'Pause';
+					btnStart.disabled = false;
+					btnStart.focus();
+					break;
+				case 'racePaused':
+					btnStart.innerText = 'Resume';
+					btnStart.disabled = false;
+					btnStart.focus();
+					break;
+			}
+		});
+		btnStart.addEventListener('click', (evt) => {
 			evt.preventDefault();
-			raceTrack.simulation.tick();
-			raceTrack.onTick();
+			evt.currentTarget.disabled = true;
+			switch (evt.currentTarget.innerText) {
+				case 'Start':
+					worker.postMessage({
+						type: 'startRace',
+						cars: raceTrack.cars.map(a => JSON.parse(JSON.stringify(a))),
+						extrema: raceTrack.extrema,
+						laps: raceTrack.laps,
+						rails: raceTrack.rails,
+						sectors: raceTrack.sectors.map(a => JSON.parse(JSON.stringify(a))),
+					});
+					return;
+				case 'Pause':
+					worker.postMessage({
+						type: 'pauseRace',
+					});
+					return;
+				case 'Resume':
+					worker.postMessage({
+						type: 'resumeRace',
+					});
+					return;
+			}
+			evt.currentTarget.disabled = false;
 		});
 	}
 });

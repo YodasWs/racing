@@ -1,10 +1,23 @@
 import TrackPiece from './TrackPiece.mjs';
-import forceRailingBounce from './forceRailingBounce.mjs';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const x = 0;
 const y = 1;
 const z = 2;
+
+// TODO: Instead, build an array of points
+function listPoints(pathNode, precision = 1/2) {
+	const pathLength = pathNode.getTotalLength();
+	const points = [];
+
+	// Linear scan for coarse approximation
+	for (let scanLength = 0; scanLength <= pathLength; scanLength += precision) {
+		const point = pathNode.getPointAtLength(scanLength);
+		points.push([point.x, point.y]);
+	}
+
+	return points;
+}
 
 function RaceTrack(svg, cars, options = {}) {
 	const simulation = d3.forceSimulation();
@@ -12,7 +25,7 @@ function RaceTrack(svg, cars, options = {}) {
 	Object.assign(this, {
 		laps: 10,
 	}, options, {
-		gradients: [],
+		sectors: [],
 		rails: [],
 		tick: 0,
 		time: 0,
@@ -45,10 +58,10 @@ function RaceTrack(svg, cars, options = {}) {
 		},
 	});
 
-	if (Array.isArray(options.gradients)) {
-		this.setTrack(options.gradients.map(piece => new TrackPiece(piece)));
+	if (Array.isArray(options.sectors)) {
+		this.setTrack(options.sectors.map((piece, i) => new TrackPiece(piece, i)));
 	} else if (Array.isArray(options.trackPieces)) {
-		this.setTrack(options.trackPieces.map(piece => new TrackPiece(piece)));
+		this.setTrack(options.trackPieces.map((piece, i) => new TrackPiece(piece, i)));
 	}
 	if (Array.isArray(cars)) {
 		this.setCars(cars);
@@ -82,152 +95,17 @@ Object.defineProperties(RaceTrack.prototype, {
 			if (!this.svg.getElementById('gCars')) {
 				this.svg.appendChild(this.gCars);
 			}
-			this.simulation.force('fCollide', d3.forceCollide(car => car.radius));
-			this.simulation.force('fRailing', forceRailingBounce(this.rails));
 
-			// Place Cars on Starting Line
-			this.simulation.nodes().forEach((car, i) => {
-				car.lapTimes = [];
-				car.x = -7 * (i + 1);
-				car.y = 5 * Math.pow(-1, i);
-				// Start with some velocity to increase excitement at the start
-				car.vx = 0.9;
-				car.vy = 0;
-				car.trackAhead = this.gradients.slice();
-				car.posn = [];
-			});
-			this.moveCars();
-			this.listCars();
-			this.simulation.alphaDecay(0);
-			this.simulation.velocityDecay(0.01);
-
-			this.simulation.on('tick', () => {
-				this.onTick();
-			});
-
-			return this;
-		},
-	},
-	onTick: {
-		value() {
-			this.simulation.nodes(this.simulation.nodes());
-			requestAnimationFrame((time) => {
-				this.time = time;
-			});
-			this.tick++;
 			this.moveCars();
 			this.listCars();
 
-			// At end of race
-			if (this.cars.every(c => c.lapTimes.length > this.laps)) {
-				this.simulation.stop();
-
-				// Remove circular reference for conversion to JSON
-				this.cars.forEach((car) => {
-					delete car.sphere;
-				});
-				const link = document.createElement('a');
-				link.setAttribute('href', `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(this))}`);
-				const now = new Date();
-				link.setAttribute('download', `race-${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}.json`);
-				link.innerText = 'Save race data';
-				document.querySelector('form').appendChild(link);
-
-				/*
-				document.querySelectorAll('svg, ol, form').forEach((el) => {
-					el.setAttribute('hidden', true);
-				});
-				document.querySelector('canvas#replay').removeAttribute('hidden');
-				/**/
-
-				window.dispatchEvent(new CustomEvent('raceEnd', {
-					detail: [this],
-				}));
-				return;
-			}
 			return this;
 		},
 	},
 	moveCars: {
 		// Move Cars!
 		value() {
-			if (this.tick % 20 === 0) {
-				d3.selectAll('#gCars circle').attr('cx', d => d.x).attr('cy', d => d.y);
-			}
-
-			this.simulation.nodes().forEach((car, i, nodes) => {
-
-				/*
-				if (this.tick % 5 === 0) {
-					const lastTime = car.time.slice(-1).pop();
-					// console.log('Sam,', this.tick, `${car.name[0]}:${car.lapTimes.length}:${piece}`);
-					if (lastTime) console.log('Sam,', this.tick, `${car.name[0]}:${lastTime.lap}:${lastTime.piece}`);
-				}
-				/**/
-
-				if (car.nextPiece) {
-					// Add to time-tracking only on first crossover in the lap
-					const piece = this.gradients.indexOf(car.trackAhead[0]);
-					// TODO: Why is this sometimes not grabbing the time object?!
-					// TODO: What could cause an extra push to lapTimes?!
-					if (!car.time.some(t => t.lap === car.lapTimes.length && t.piece === piece)) {
-						car.time.push({
-							// TODO: point to index of car.posn with same tick
-							lap: car.lapTimes.length,
-							piece,
-							tick: this.tick,
-							time: this.time,
-						});
-
-						// Cross the start/end line, next lap
-						if (piece === 0) {
-							if (!this.finalStanding.includes(car.name)) {
-								const lastTime = car.time.slice(-1).pop();
-								// if (lastTime) console.log('Sam, next lap!', this.tick, `${car.name[0]}:${lastTime.lap}:${lastTime.piece}`);
-								car.lapTimes.push({
-									tick: this.tick,
-									time: this.time,
-								});
-							}
-
-							if (car.lapTimes.length > this.laps) {
-								// Finished!
-								if (!this.finalStanding.includes(car.name)) {
-									this.finalStanding.push(car.name);
-								}
-							}
-						}
-					}
-
-					car.trackAhead.push(car.trackAhead.shift());
-					car.nextPiece = false;
-				}
-
-				if (car.previousPiece) {
-					car.trackAhead.unshift(car.trackAhead.pop());
-					car.previousPiece = false;
-				}
-
-				// We finished race, so let's stop
-				if (this.finalStanding.includes(car.name)) {
-					const place = this.finalStanding.indexOf(car.name);
-
-					car.y = Math.min(Math.max(-20, car.y), 20);
-
-					if (car.x > this.gradients[0].x + (this.cars.length - place) * 10) {
-						car.fx = car.x;
-						car.fy = car.y;
-					}
-				}
-
-				// Off track? Stop!
-				if (car.x < this.extrema[x][0] - 10
-					|| car.x > this.extrema[x][1] + 10
-					|| car.y < this.extrema[y][0] - 10
-					|| car.y > this.extrema[y][1] + 10) {
-					this.simulation.stop();
-				}
-			});
+			d3.selectAll('#gCars circle').attr('cx', d => d.x).attr('cy', d => d.y);
 
 			// Record positional data for future replay
 			this.cars.forEach((car) => {
@@ -248,18 +126,18 @@ Object.defineProperties(RaceTrack.prototype, {
 	setTrack: {
 		enumerable: true,
 		value(track) {
-			this.gradients = track.filter(piece => piece instanceof TrackPiece);
+			this.sectors = track.filter(piece => piece instanceof TrackPiece);
 
 			// Add Track Pieces to SVG
-			let buildPosition = [0, 0];
+			const buildPosition = [0, 0];
 			const extrema = [[0, 0], [0, 0]];
 			const railPoints = [[], []];
-			this.rails = new Array(2).fill({});
+			this.rails = [];
 
 			const centerPoints = [];
 
 			this.gTrack.innerHTML = '';
-			this.gradients.forEach((grad, i) => {
+			this.sectors.forEach((grad, i) => {
 				// Move build position
 				buildPosition[x] += grad.delta[x];
 				buildPosition[y] += grad.delta[y];
@@ -290,8 +168,8 @@ Object.defineProperties(RaceTrack.prototype, {
 				// y - y1 = m (x - x1); y = mx - mx1 + y1
 				grad.b = -grad.m * points.x1 + points.y1;
 
-				grad.rail.forEach((r, i, a) => {
-					if (typeof r === 'number') a[i] = [r, r];
+				grad.rail.forEach((r, j, a) => {
+					if (typeof r === 'number') a[j] = [r, r];
 				});
 
 				const left = 0;
@@ -299,9 +177,8 @@ Object.defineProperties(RaceTrack.prototype, {
 				const before = 0;
 				const after = 1;
 
-				// Draw line
-				const elLine = document.createElementNS(SVG, 'line');
-				railPoints[left].push({
+				// Get points for rails
+				const railLeft = {
 					before: [
 						points.x1 - grad.width * Math.cos(α) * grad.rail[left][before],
 						points.y1 - grad.width * Math.sin(α) * grad.rail[left][before],
@@ -314,8 +191,8 @@ Object.defineProperties(RaceTrack.prototype, {
 						points.x1 + grad.width * Math.cos(α) * grad.rail[left][after],
 						points.y1 + grad.width * Math.sin(α) * grad.rail[left][after],
 					],
-				});
-				railPoints[right].push({
+				};
+				const railRight = {
 					before: [
 						points.x2 - grad.width * Math.cos(α) * grad.rail[right][before],
 						points.y2 - grad.width * Math.sin(α) * grad.rail[right][before],
@@ -328,13 +205,18 @@ Object.defineProperties(RaceTrack.prototype, {
 						points.x2 + grad.width * Math.cos(α) * grad.rail[right][after],
 						points.y2 + grad.width * Math.sin(α) * grad.rail[right][after],
 					],
-				});
+				};
+				railPoints[left].push(railLeft);
+				railPoints[right].push(railRight);
 
+				// Expand extrema of track layout
 				extrema[x][0] = Math.min(extrema[x][0], points.x1, points.x2);
 				extrema[x][1] = Math.max(extrema[x][1], points.x1, points.x2);
 				extrema[y][0] = Math.min(extrema[y][0], points.y1, points.y2);
 				extrema[y][1] = Math.max(extrema[y][1], points.y1, points.y2);
 
+				// Draw line to SVG
+				const elLine = document.createElementNS(SVG, 'line');
 				Object.entries(points).forEach(([attr, num]) => {
 					elLine.setAttribute(attr, num);
 				});
@@ -343,6 +225,8 @@ Object.defineProperties(RaceTrack.prototype, {
 					elLine.classList.add('start-line');
 				}
 				this.gTrack.appendChild(elLine);
+
+				// Add dot to center track
 				d3.select('svg #gTrack').append('circle')
 					.attr('cx', grad.x).attr('cy', grad.y)
 					.attr('r', i === 0 ? 1.5 : 2).attr('fill', grad.color || 'whitesmoke')
@@ -352,28 +236,28 @@ Object.defineProperties(RaceTrack.prototype, {
 				// TODO: Calculate borders of piece for geofencing
 			});
 
-			this.extrema = extrema;
-
-			// Draw railings along track
+			// Build rails for each sector separately
 			railPoints.forEach((rail, j) => {
-				rail.push(rail[0]);
-				const elLine = document.createElementNS(SVG, 'path');
-				const d = [];
-				rail.forEach((point, i) => {
-					if (i === 0) {
-						d.push(`M${point.is.join(',')}`);
-					} else {
-						d.push(`C${[
-							rail[i - 1].after.join(' '),
-							point.before.join(' '),
-							point.is.join(' '),
-						].join(',')}`);
-					}
+				// rail.push(rail[0]); // Close the loop
+				rail.forEach((sector, i) => {
+					this.rails[i] ??= [];
+					const lastSector = i === 0 ? rail.length -1 : i - 1;
+					const elLine = document.createElementNS(SVG, 'path');
+					const d = [];
+					d.push(`M${rail[lastSector].is.join(' ')}`);
+					d.push(`C${[
+						rail[lastSector].after.join(' '),
+						sector.before.join(' '),
+						sector.is.join(' '),
+					].join(',')}`);
+					elLine.setAttribute('d', d.join(''));
+					this.gTrack.appendChild(elLine);
+					// Convert into array of points
+					this.rails[i][j] = listPoints(elLine);
 				});
-				elLine.setAttribute('d', d.join(''));
-				this.gTrack.appendChild(elLine);
-				this.rails[j] = elLine;
 			});
+
+			this.extrema = extrema;
 
 			// Adjust SVG View Box
 			const buffer = 10;
@@ -382,6 +266,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			let x0 = extrema[x][0] - buffer;
 			let y0 = extrema[y][0] - buffer;
 
+			// Maintain aspect ratio of 4:5
 			if (height > width * 4 / 5) {
 				width = height * 5 / 4;
 				x0 = (extrema[x][0] + extrema[x][1] - width) / 2;
@@ -393,6 +278,7 @@ Object.defineProperties(RaceTrack.prototype, {
 			this.svg.setAttribute('viewBox', `${x0} ${y0} ${width} ${height}`);
 
 			// Center line around track
+			// TODO: A true center line would be built like the railings
 			d3.select('svg').append('g').selectAll('path').data([
 				centerPoints,
 			]).enter().append('path').attr(
