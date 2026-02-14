@@ -1,26 +1,27 @@
-export default function Car(name, options = {}) {
-	Object.assign(this, {
-		strokeWidth: 1,
-		r: 4,
-	}, options, {
-		trackAhead: [],
-		nextPiece: false,
-		previousPiece: false,
-		lapTimes: [],
-		time: [],
-		posn: [],
-	});
+export default class Car {
+	#name;
 
-	Object.defineProperties(this, {
-		name: {
-			enumerable: true,
-			get: () => name,
-		},
-		radius: {
-			enumerable: true,
-			get: () => this.r + this.strokeWidth / 2,
-		},
-	});
-}
-Object.defineProperties(Car.prototype, {
-});
+	constructor(name, options = {}) {
+		Object.assign(this, {
+			strokeWidth: 1,
+			r: 4,
+		}, options, {
+			sector: 0,
+			trackAhead: [],
+			nextPiece: false,
+			previousPiece: false,
+			lapTimes: [],
+			time: [],
+			posn: [],
+		});
+		this.#name = name;
+	}
+
+	get name() {
+		return this.#name;
+	}
+
+	get radius() {
+		return this.r + this.strokeWidth / 2;
+	}
+};
