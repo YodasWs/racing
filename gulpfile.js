@@ -454,7 +454,17 @@ gulp.task('transfer:res', () => gulp.src([
 	.pipe(gulp.dest(path.join(options.dest, 'res'))),
 );
 
+gulp.task('transfer:workers', () => gulp.src([
+	'./src/**/*.worker.js',
+])
+	.pipe(plugins.lintES(options.lintES || {}))
+	.pipe(plugins.lintES.format())
+	.pipe(plugins.lintES.failAfterError())
+	.pipe(gulp.dest(options.dest)),
+);
+
 gulp.task('transfer-files', gulp.parallel(
+	'transfer:workers',
 	'transfer:assets',
 	'transfer:fonts',
 	'transfer:res',
@@ -491,10 +501,16 @@ gulp.task('watch', (done) => {
 	gulp.watch('./src/**/*.{sa,sc,c}ss', {
 		usePolling: true,
 	}, gulp.series('compile:sass', 'reload'));
+	gulp.watch('./src/**/*.worker.js', {
+		usePolling: true,
+	}, gulp.series('transfer:workers', 'reload'));
 	gulp.watch('./lib/*.js', {
 		usePolling: true,
 	}, gulp.series('transfer:res', 'reload'));
-	gulp.watch('./src/**/*.{js,mjs,json}', {
+	gulp.watch([
+		'./src/**/*.{js,mjs,json}',
+		'!./src/**/*.worker.js',
+	], {
 		usePolling: true,
 	}, gulp.series(lintJs, 'compile:js', 'reload'));
 	gulp.watch('./src/**/*.html', {
