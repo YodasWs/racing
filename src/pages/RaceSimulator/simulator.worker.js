@@ -184,19 +184,76 @@ function forceRailingBounce(rails) {
 				ry /= rLen;
 			}
 
-			// Place marble exactly radius away from rail along this direction
+			// Place marble radius + slop away from rail along this direction
 			const slop = Math.random() * 0.09 + 0.01; // small extra push to prevent sticking
 			car.x = qx + rx * (car.radius + slop);
 			car.y = qy + ry * (car.radius + slop);
 
-			// Reflect velocity across the normal
-			if (dot < 0) {
-				car.vx -= 2 * dot * nx;
-				car.vy -= 2 * dot * ny;
-			} else {
-				car.vx += Number.EPSILON * nx;
-				car.vy += Number.EPSILON * ny;
+			// Velocity tangent to rail
+			let vtx = car.vx - dot * nx;
+			let vty = car.vy - dot * ny;
+
+			// Apply Restitution (bounciness)
+			let new_vn = -dot * car.restitution;
+
+			// Apply collision stability (mass-like resistance to deflection)
+			// Higher stability = less deflection
+			new_vn /= car.stability;
+
+			// new_vn *= 1 + (Math.random() - 0.5) * 0.1; // add some randomness to bounce
+
+			// Apply glancing (how much glancing velocity is added)
+			vtx += car.glancing * dot * (-ny);
+			vty += car.glancing * dot * (-nx);
+
+			// Apply drag
+			new_vn *= 1 - car.drag;
+			vtx *= 1 - car.drag;
+			vty *= 1 - car.drag;
+
+			// Recombine normal + trangent velocities
+			let new_vx = new_vn * nx + vtx;
+			let new_vy = new_vn * ny + vty;
+
+			// Get tangent pointing in direction of forward movement
+			const tangent = [
+				-ny,
+				nx,
+			];
+			if (car.vx * tangent[x] + car.vy * tangent[y] < 0) {
+				tangent[x] *= -1;
+				tangent[y] *= -1;
 			}
+
+			// If we're moving mostly along the rail, add some of the normal vector back to get off the wall
+			for (let i = 0; Math.acos(
+				(new_vx * tangent[x] + new_vy * tangent[y]) / Math.hypot(new_vx, new_vy)
+			) < Math.PI / 20 && i < 10; i++) {
+				new_vx += 0.1 * nx;
+				new_vy += 0.1 * ny;
+			}
+
+			// If we're moving mostly perpendicular to the rail, add some of the tangent vector back to get some forward movement
+			for (let i = 0; Math.acos(
+				(new_vx * tangent[x] + new_vy * tangent[y]) / Math.hypot(new_vx, new_vy)
+			) > (Math.PI / 2 - Math.PI / 10) && i < 10; i++) {
+				new_vx += 0.1 * tangent[x];
+				new_vy += 0.1 * tangent[x];
+			}
+
+			// Don't allow increase in speed from bounce
+			const speedBefore = Math.hypot(car.vx, car.vy);
+			const speedAfter = Math.hypot(new_vx, new_vy);
+
+			// Don't want to lose speed on bounce
+			if (speedBefore < speedAfter * (1 + car.skill)) {
+				const speedScale = speedBefore / speedAfter;
+				new_vx *= speedScale;
+				new_vy *= speedScale;
+			}
+
+			car.vx = new_vx;
+			car.vy = new_vy;
 
 			// Remove any velocity into the rail to prevent sticking
 			const inward = car.vx * nx + car.vy * ny;
@@ -204,10 +261,11 @@ function forceRailingBounce(rails) {
 				car.vx -= inward * nx;
 				car.vy -= inward * ny;
 			}
+
 		});
 
 		// Optional: clamp speed to avoid crazy energy growth
-		const maxV = 1; // or whatever feels right
+		const maxV = 4; // or whatever feels right
 		nodes.forEach((car) => {
 			const v = Math.hypot(car.vx, car.vy);
 			if (v > maxV) {
