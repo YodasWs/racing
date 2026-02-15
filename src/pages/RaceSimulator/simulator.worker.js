@@ -6,14 +6,262 @@ const x = 0;
 const y = 1;
 const z = 2;
 
+function closestSegments(P0, P1, A, B) {
+	const ux = P1[0] - P0[0];
+	const uy = P1[1] - P0[1];
+	const vx = B[0] - A[0];
+	const vy = B[1] - A[1];
+	const wx0 = P0[0] - A[0];
+	const wy0 = P0[1] - A[1];
+
+	const a = ux * ux + uy * uy;       // |u|^2
+	const b = ux * vx + uy * vy;       // u·v
+	const c = vx * vx + vy * vy;       // |v|^2
+	const d = ux * wx0 + uy * wy0;     // u·w0
+	const e = vx * wx0 + vy * wy0;     // v·w0
+
+	const D = a * c - b * b;           // denominator
+
+	let sN, sD = D;
+	let tN, tD = D;
+
+	if (D < Number.EPSILON) {
+		// Segments almost parallel: choose s = 0, project A onto u
+		sN = 0;
+		sD = 1;
+		tN = e;
+		tD = c;
+	} else {
+		sN = (b * e - c * d);
+		tN = (a * e - b * d);
+		if (sN < 0) {
+			sN = 0;
+			tN = e;
+			tD = c;
+		} else if (sN > sD) {
+			sN = sD;
+			tN = e + b;
+			tD = c;
+		}
+	}
+
+	if (tN < 0) {
+		tN = 0;
+		if (-d < 0) {
+			sN = 0;
+		} else if (-d > a) {
+			sN = sD;
+		} else {
+			sN = -d;
+			sD = a;
+		}
+	} else if (tN > tD) {
+		tN = tD;
+		if (-d + b < 0) {
+			sN = 0;
+		} else if (-d + b > a) {
+			sN = sD;
+		} else {
+			sN = -d + b;
+			sD = a;
+		}
+	}
+
+	const sc = (Math.abs(sN) < Number.EPSILON ? 0 : sN / sD);
+	const tc = (Math.abs(tN) < Number.EPSILON ? 0 : tN / tD);
+
+	const cx = P0[0] + sc * ux;
+	const cy = P0[1] + sc * uy;
+	const qx = A[0] + tc * vx;
+	const qy = A[1] + tc * vy;
+
+	const dx = cx - qx;
+	const dy = cy - qy;
+	const dist = Math.hypot(dx, dy);
+
+	return { dist, sc, tc, cx, cy, qx, qy, ux, uy, vx, vy };
+}
+
 function forceRailingBounce(rails) {
+	let nodes = [];
+
+	function force(alpha) {
+		nodes.forEach((car) => {
+			const P0 = [car.x, car.y];
+			const P1 = [car.x + car.vx, car.y + car.vy];
+
+			let bestHit = null;
+			let bestS = 1; // earliest along motion
+
+			const sectorRails = rails[car.sector];
+			if (!sectorRails) return;
+
+			sectorRails.forEach((rail) => {
+				for (let i = 0; i < rail.length - 1; i++) {
+					const A = rail[i];
+					const B = rail[i + 1];
+
+					const hit = closestSegments(P0, P1, A, B);
+					// hit.dist = distance between closest points on the two segments
+					// hit.sc   = param along P0->P1
+					if (hit.dist <= car.radius && hit.sc >= 0 && hit.sc <= 1) {
+						if (hit.sc < bestS) {
+							bestS = hit.sc;
+							bestHit = { ...hit, A, B };
+						}
+					}
+				}
+			});
+
+			if (!bestHit) return; // no collision this tick
+
+			// Position at collision along marble path
+			const cx = P0[0] + bestHit.sc * bestHit.ux;
+			const cy = P0[1] + bestHit.sc * bestHit.uy;
+
+			// Closest point on rail at that time
+			const qx = bestHit.qx;
+			const qy = bestHit.qy;
+
+			// Normal vector of rail segment
+			const abx = bestHit.B[0] - bestHit.A[0];
+			const aby = bestHit.B[1] - bestHit.A[1];
+			let nx = -aby;
+			let ny =  abx;
+			const nLen = Math.hypot(nx, ny);
+			if (nLen === 0) {
+				// Can't determine normal, so skip bounce
+				if (abx === 0) {
+					// Degenerate vertical segment, normal is horizontal
+					nx = 0;
+					ny = Math.sign(car.x - bestHit.A[0]);
+				} else if (aby === 0) {
+					// Degenerate horizontal segment, normal is vertical
+					nx = Math.sign(car.y - bestHit.A[1]);
+					ny = 0;
+				}
+			} else {
+				nx /= nLen;
+				ny /= nLen;
+			}
+
+			// Vector from rail to marble at collision
+			let rx = cx - qx;
+			let ry = cy - qy;
+
+			// Bounce only if car is moving into rail
+			{
+				// Point normal in same direction from the railing as the car
+				if (rx * nx + ry * ny < 0) {
+					// if (Math.acos((rx * nx + ry * ny) / Math.hypot(rx, ry)) >= Math.PI / 2) {
+					// Normal is pointed in the wrong direction!
+					nx = -nx;
+					ny = -ny;
+				}
+
+				// We need to push this far off the railing
+				// x' component of velocity vector
+				const vxn = car.vx * nx + car.vy * ny;
+
+				const dot = car.vx * nx + car.vy * ny;
+				if (dot > 0) {
+					// We're already moving in the correct direction!
+					return;
+				}
+
+				// if (Math.acos(vxn / Math.hypot(car.vx, car.vy)) < Math.PI / 2) {
+				// We're already moving in the correct direction!
+				// return;
+				// }
+			}
+
+			// Normalize Vector from rail to marble at collision
+			let rLen = Math.hypot(rx, ry);
+			if (rLen === 0) {
+				// Degenerate: fall back to rail normal
+				rx = nx;
+				ry = ny;
+			} else {
+				rx /= rLen;
+				ry /= rLen;
+			}
+
+			// Place marble exactly radius away from rail along this direction
+			car.x = qx + rx * car.radius;
+			car.y = qy + ry * car.radius;
+
+			// Reflect velocity across the normal
+			const dot = car.vx * nx + car.vy * ny;
+			if (dot < 0) {
+				car.vx -= 2 * dot * nx;
+				car.vy -= 2 * dot * ny;
+			}
+		});
+
+		// Optional: clamp speed to avoid crazy energy growth
+		const maxV = 1; // or whatever feels right
+		nodes.forEach((car) => {
+			const v = Math.hypot(car.vx, car.vy);
+			if (v > maxV) {
+				car.vx = car.vx / v * maxV;
+				car.vy = car.vy / v * maxV;
+			}
+		});
+	}
+
+	force.initialize = (_) => { nodes = _; };
+	return force;
+
+	/*
 	let nodes = [];
 	function force(alpha) {
 		nodes.forEach((car) => {
 			const cp = closestPoint(rails[car.sector], car);
+			if (!cp) return;
 			// Bounce!
 			// If car overlaping railing or car will run through railing
 			// TODO: Need to construct force similar to d3.forceCollide to prevent bouncing off virtual/invisible railings
+
+			const nextPoint = [
+				car.x + car.vx,
+				car.y + car.vy,
+			];
+
+			const dist = [
+				Math.hypot(car.x - cp.x, car.y - cp.y),
+				Math.hypot(nextPoint[x] - cp.x, nextPoint[y] - cp.y),
+			];
+
+			// if (cp.distance <= car.radius || cp.distance <= Math.hypot(car.vx / 2, car.vy / 2)) {
+			let nx = -cp.aby;
+			let ny =  cp.abx;
+			const nLen = Math.hypot(nx, ny);
+			if (nLen === 0) {
+				// Can't determine normal, so skip bounce
+				return;
+			}
+			nx /= nLen;
+			ny /= nLen;
+
+			console.log('Sam, Copilot normal:', nx, ny);
+		// car.vx += nx * bounceStrength;
+		// car.vy += ny * bounceStrength;
+		// }
+
+		// Push car out of railing
+			const penetration = car.radius - nextDist;
+			car.x += nx * penetration;
+			car.y += ny * penetration;
+
+			// Reflect the velocity
+			const dot = car.vx * nx + car.vy * ny;
+			if (dot < 0) { // Only reflect if moving towards the rail
+				car.vx -= 2 * dot * nx;
+				car.vy -= 2 * dot * ny;
+			}
+
+			return;
+
 			if (cp.distance <= car.radius || cp.distance <= Math.hypot(car.vx / 2, car.vy / 2)) {
 				// Vector normal to the surface at this point
 				let normal = [
@@ -105,109 +353,6 @@ function forceRailingBounce(rails) {
 				car.vx -= delta[x];
 				car.vy -= delta[y];
 			}
-		});
-
-		return;
-
-		// TODO: Rearrange so that each car only checks railing of current sector, not every sector
-		rails.forEach((rail) => {
-			nodes.forEach((car) => {
-				const cp = closestPoint(rail, car);
-				// Bounce!
-				// If car overlaping railing or car will run through railing
-				// TODO: Need to construct force similar to d3.forceCollide to prevent bouncing off virtual/invisible railings
-				if (cp.distance <= car.radius || cp.distance <= Math.hypot(car.vx / 2, car.vy / 2)) {
-					// Vector normal to the surface at this point
-					let normal = [
-						cp.after.y - cp.best.y,
-						cp.best.x - cp.after.x,
-					];
-					const N = Math.hypot(...normal);
-					normal = normal.map(d => d / N);
-
-					// Bounce only if car is moving into rail
-					const position = [
-						car.x - cp.best.x,
-						car.y - cp.best.y,
-					];
-
-					// Point normal in same direction from the railing as the car
-					if (Math.acos((position[x] * normal[x] + position[y] * normal[y]) / Math.hypot(...position)) >= Math.PI / 2) {
-						// Normal is pointed in the wrong direction!
-						normal[x] = -normal[x];
-						normal[y] = -normal[y];
-					}
-
-					// We need to push this far off the railing
-					// x' component of velocity vector
-					const vxn = car.vx * normal[x] + car.vy * normal[y];
-
-					if (Math.acos(vxn / Math.hypot(car.vx, car.vy)) < Math.PI / 2) {
-						// We're already moving in the correct direction!
-						return;
-					}
-
-					let bounceStrength = Math.random() + 1;
-					let delta = [];
-					let d = 0;
-
-					do {
-						bounceStrength += 0.05;
-						delta = [
-							bounceStrength * vxn * normal[x],
-							bounceStrength * vxn * normal[y],
-						];
-
-						d = Math.hypot(
-							car.x + car.vx - delta[x] - cp.after.x,
-							car.y + car.vy - delta[y] - cp.after.y
-						);
-
-						// If running along the rail, try to push off
-					} while (
-						Math.abs((car.vx - delta[x]) * normal[x] + (car.vy - delta[y]) * normal[y]) <= Math.abs(vxn)
-						&& d < car.radius
-						&& bounceStrength < 3
-					);
-
-					// If bounceStrength < 2, there is a loss of velocity
-					// Compensate for loss of x' with gain in y' to maintain (near-)same velocity
-					if (bounceStrength < 2) {
-						// Get tangent pointing in direction of forward movement
-						const tangent = [
-							-normal[y],
-							normal[x],
-						];
-						if (Math.acos(
-							(car.vx * tangent[x] + car.vy * tangent[y]) / Math.hypot(car.vx, car.vy)
-						) > Math.PI / 2) {
-							tangent[x] *= -1;
-							tangent[y] *= -1;
-						}
-
-						// y' component of velocity vector
-						const vyn = car.vx * tangent[x] + car.vy * tangent[y];
-						bounceStrength = 0.1;
-
-						// Don't want to lose too much speed from bounce
-						while (Math.hypot(car.vx - delta[x], car.vy - delta[y]) < 0.6 * Math.hypot(car.vx, car.vy) && bounceStrength < 1) {
-							bounceStrength += 0.1;
-							delta[x] -= 0.1 * vyn * tangent[x];
-							delta[y] -= 0.1 * vyn * tangent[y];
-						}
-
-						// But don't want to accelerate either
-						while (Math.hypot(car.vx - delta[x], car.vy - delta[y]) > Math.hypot(car.vx, car.vy)) {
-							delta[x] += 0.05 * vyn * tangent[x];
-							delta[y] += 0.05 * vyn * tangent[y];
-						}
-					}
-
-					// Finally, apply change in velocity
-					car.vx -= delta[x];
-					car.vy -= delta[y];
-				}
-			});
 		});
 	}
 
@@ -457,6 +602,7 @@ class Simulation {
 			car.vx = 0.9;
 			car.vy = 0;
 			car.posn = [];
+			car.time = [];
 		});
 		this.#moveCars();
 		this.#simulation.alphaDecay(0);
