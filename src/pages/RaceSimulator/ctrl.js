@@ -188,11 +188,11 @@ yodasws.page('pageRaceSimulator').setRoute({
 				case 'Start':
 					worker.postMessage({
 						type: 'startRace',
-						cars: raceTrack.cars.map(a => JSON.parse(JSON.stringify(a))),
+						cars: JSON.parse(JSON.stringify(raceTrack.cars)),
 						extrema: raceTrack.extrema,
 						laps: raceTrack.laps,
 						rails: raceTrack.rails,
-						sectors: raceTrack.sectors.map(a => JSON.parse(JSON.stringify(a))),
+						sectors: JSON.parse(JSON.stringify(raceTrack.sectors)),
 					});
 					return;
 				case 'Pause':

@@ -1,6 +1,4 @@
 export default class Car {
-	#name;
-
 	constructor(name, options = {}) {
 		Object.assign(this, {
 			strokeWidth: 1,
@@ -13,15 +11,8 @@ export default class Car {
 			lapTimes: [],
 			time: [],
 			posn: [],
+			name,
 		});
-		this.#name = name;
-	}
-
-	get name() {
-		return this.#name;
-	}
-
-	get radius() {
-		return this.r + this.strokeWidth / 2;
+		this.radius = this.r + this.strokeWidth / 2;
 	}
 };
