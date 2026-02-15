@@ -6,7 +6,7 @@ const y = 1;
 const z = 2;
 
 // TODO: Instead, build an array of points
-function listPoints(pathNode, precision = 1/2) {
+function listPoints(pathNode, precision = 1/4) {
 	const pathLength = pathNode.getTotalLength();
 	const points = [];
 
@@ -254,6 +254,20 @@ Object.defineProperties(RaceTrack.prototype, {
 					this.gTrack.appendChild(elLine);
 					// Convert into array of points
 					this.rails[i][j] = listPoints(elLine);
+				});
+			});
+
+			const numAdjacent = 10;
+			// Add points from adjacent railings to handle the marbles rolling into the rail of an adjacent sector
+			railPoints.forEach((rail, j) => {
+				rail.forEach((sector, i) => {
+					if (!Array.isArray(sector)) return;
+					const previousSector = i === 0 ? rail.length -1 : i - 1;
+					const nextSector = i === rail.length - 1 ? 0 : i + 1;
+					for (let k = 0; k < numAdjacent; k++) {
+						sector.unshift(rail[previousSector][rail[previousSector].length - 1 - k]);
+						sector.push(rail[nextSector][k]);
+					}
 				});
 			});
 
