@@ -64,7 +64,18 @@ function RaceTrack(svg, cars, options = {}) {
 		this.setTrack(options.trackPieces.map((piece, i) => new TrackPiece(piece, i)));
 	}
 	if (Array.isArray(cars)) {
-		this.setCars(cars);
+		cars.forEach((car, i) => {
+			car.lapTimes = [];
+			car.x = -7 * (i + 1);
+			car.y = 5 * Math.pow(-1, i);
+		});
+		d3.select('svg #gCars').selectAll('circle')
+			.data(cars).enter().append('circle').classed('car', true)
+			.attr('fill', d => d.color).attr('stroke', d => d.color2)
+			.attr('stroke-width', car => car.strokeWidth)
+			.attr('r', car => car.r).attr('cx', d => d.x).attr('cy', d => d.y);
+		this.simulation.nodes(cars);
+		this.cars = cars.slice();
 	}
 }
 
@@ -96,29 +107,7 @@ Object.defineProperties(RaceTrack.prototype, {
 				this.svg.appendChild(this.gCars);
 			}
 
-			this.moveCars();
 			this.listCars();
-
-			return this;
-		},
-	},
-	moveCars: {
-		// Move Cars!
-		value() {
-			d3.selectAll('#gCars circle').attr('cx', d => d.x).attr('cy', d => d.y);
-
-			// Record positional data for future replay
-			this.cars.forEach((car) => {
-				car.posn.push({
-					// TODO: if item was added to car.time, point to it
-					tick: this.tick,
-					time: this.time,
-					vx: car.vx,
-					vy: car.vy,
-					x: car.x,
-					y: car.y,
-				});
-			});
 
 			return this;
 		},
@@ -280,15 +269,6 @@ Object.defineProperties(RaceTrack.prototype, {
 			let x0 = extrema[x][0] - buffer;
 			let y0 = extrema[y][0] - buffer;
 
-			// Maintain aspect ratio of 4:5
-			if (height > width * 4 / 5) {
-				width = height * 5 / 4;
-				x0 = (extrema[x][0] + extrema[x][1] - width) / 2;
-			} else {
-				height = width * 4 / 5;
-				y0 = (extrema[y][0] + extrema[y][1] - height) / 2;
-			}
-
 			this.svg.setAttribute('viewBox', `${x0} ${y0} ${width} ${height}`);
 
 			// Center line around track
@@ -300,19 +280,6 @@ Object.defineProperties(RaceTrack.prototype, {
 				d3.line().curve(d3.curveBasisClosed)
 			).classed('lane-line', true);
 
-			return this;
-		},
-	},
-	setCars: {
-		enumerable: true,
-		value(cars) {
-			d3.select('svg #gCars').selectAll('circle')
-				.data(cars).enter().append('circle').classed('car', true)
-				.attr('fill', d => d.color).attr('stroke', d => d.color2)
-				.attr('stroke-width', car => car.strokeWidth)
-				.attr('r', car => car.r).attr('cx', d => d.x).attr('cy', d => d.y);
-			this.simulation.nodes(cars);
-			this.cars = cars.slice();
 			return this;
 		},
 	},
