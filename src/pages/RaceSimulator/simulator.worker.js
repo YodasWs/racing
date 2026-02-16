@@ -298,7 +298,7 @@ class Simulation {
 		sectors = [],
 		...options
 	} = {}) {
-		if (Number.isInteger(options.laps) && options.laps > 0) this.#laps = options.laps;
+		if (Number.isInteger(laps) && laps > 0) this.#laps = laps;
 
 		if (Array.isArray(cars) && cars.length > 0) {
 			this.#cars = cars;
@@ -317,127 +317,133 @@ class Simulation {
 			throw new TypeError('extrema must be an array of two [min, max] arrays');
 		}
 
-		if (Array.isArray(sectors) && sectors.length > 0) {
-			this.#sectors = sectors;
-			// Add track forces to simulation
-			this.#sectors.forEach((grad, i) => {
-				grad.force = (() => {
-					let nodes = [];
-
-					function force(alpha) {
-						nodes.forEach((node) => {
-							// Do not apply to Cars outside Sector
-							if (node.sector !== i) return;
-
-							// Apply force to move v towards g
-							const speed = Math.hypot(node.vx, node.vy);
-							const v = [node.vx / speed, node.vy / speed];
-							const normalizedGradient = grad.gradient.map(d => d / Math.hypot(...grad.gradient));
-							let acceleration = [
-								normalizedGradient[x] - v[x],
-								normalizedGradient[y] - v[y],
-							];
-
-							// If acceleration in same direction as velocity, zero it
-							const angle = Math.acos((
-								acceleration[x] * v[x] + acceleration[y] * v[y]
-							) / Math.hypot(...acceleration));
-							if (Number.isNaN(angle) || angle * 180 / Math.PI < Number.EPSILON) {
-								acceleration = [0, 0];
-							}
-
-							// Scale acceleration by correctiveStrength
-							const a = Math.hypot(...acceleration);
-							if (a > 1) acceleration = acceleration.map(d => d / a * correctiveStrength);
-							else if (a > 0) acceleration = acceleration.map(d => d * correctiveStrength);
-
-							// Add gradient to acceleration to more strongly force movement in that direction
-							acceleration = acceleration.map((d, i) => d + normalizedGradient[i] * gravity);
-
-							// Apply alpha decay and add to velocity
-							node.vx += acceleration[x] * alpha;
-							node.vy += acceleration[y] * alpha;
-
-							const nextPosition = [node.x + node.vx, node.y + node.vy];
-
-							// Determine when the car moves off this sector and onto the next
-							// If not vertical
-							if (Number.isFinite(grad.m) && Number.isFinite(grad.b)
-								&& grad.α !== 0 && grad.α !== Math.PI && grad.α !== 2 * Math.PI
-							) {
-								const y0 = grad.m * nextPosition[x] + grad.b;
-								if (grad.α > 0 && grad.α < Math.PI && y0 <= nextPosition[y]) {
-									node.nextPiece = true;
-								}
-								if (grad.α > Math.PI && y0 >= nextPosition[y]) {
-									node.nextPiece = true;
-								}
-							} else {
-								// Vertical, simply check x
-								if (grad.α === 0 && grad.x < nextPosition[x]) {
-									node.nextPiece = true;
-								}
-								if (grad.α === Math.PI && grad.x > nextPosition[x]) {
-									node.nextPiece = true;
-								}
-							}
-
-							// Determine if the car moved back a sector
-							const lastPiece = sectors[node.sector - 1 < 0 ? sectors.length - 1 : node.sector - 1];
-
-							// If not vertical
-							if (Number.isFinite(lastPiece.m) && Number.isFinite(lastPiece.b)
-								&& lastPiece.α !== 0 && lastPiece.α !== Math.PI && lastPiece.α !== 2 * Math.PI
-							) {
-								const y0 = lastPiece.m * node.x + lastPiece.b;
-								if (lastPiece.α > 0 && lastPiece.α < Math.PI && y0 > node.y) {
-									node.previousPiece = true;
-								}
-								if (lastPiece.α > Math.PI && y0 < node.y) {
-									node.previousPiece = true;
-								}
-							} else {
-								// Vertical, simply check x
-								if (lastPiece.α === 0 && lastPiece.x > node.x) {
-									node.previousPiece = true;
-								}
-								if (lastPiece.α === Math.PI && lastPiece.x < node.x) {
-									node.previousPiece = true;
-								}
-							}
-
-							// Can't move forward AND backwards. Let's assume they've moved back and need a course correction
-							if (node.previousPiece) {
-								node.nextPiece = false;
-							}
-						});
-					}
-
-					force.initialize = (_) => {
-						nodes = _;
-					};
-
-					return force;
-				})();
-				this.#simulation.force(`sector${i}`, grad.force);
-			});
-		} else {
+		if (!Array.isArray(sectors) || sectors.length === 0) {
 			throw new TypeError('sectors must be an array of TrackPieces');
 		}
+
+		this.#sectors = sectors;
+		// Add track forces to simulation
+		this.#sectors.forEach((grad, i) => {
+			grad.force = (() => {
+				let nodes = [];
+
+				function force(alpha) {
+					nodes.forEach((node) => {
+						// Do not apply to Cars outside Sector
+						if (node.sector !== i) return;
+
+						// Apply force to move v towards g
+						const speed = Math.hypot(node.vx, node.vy);
+						const v = [node.vx / speed, node.vy / speed];
+						const normalizedGradient = grad.gradient.map(d => d / Math.hypot(...grad.gradient));
+						let acceleration = [
+							normalizedGradient[x] - v[x],
+							normalizedGradient[y] - v[y],
+						];
+
+						// If acceleration in same direction as velocity, zero it
+						const angle = Math.acos((
+							acceleration[x] * v[x] + acceleration[y] * v[y]
+						) / Math.hypot(...acceleration));
+						if (Number.isNaN(angle) || angle * 180 / Math.PI < Number.EPSILON) {
+							acceleration = [0, 0];
+						}
+
+						// Scale acceleration by correctiveStrength
+						const a = Math.hypot(...acceleration);
+						if (a > 1) acceleration = acceleration.map(d => d / a * correctiveStrength);
+						else if (a > 0) acceleration = acceleration.map(d => d * correctiveStrength);
+
+						// Add gradient to acceleration to more strongly force movement in that direction
+						acceleration = acceleration.map((d, i) => d + normalizedGradient[i] * gravity);
+
+						// Apply alpha decay and add to velocity
+						node.vx += acceleration[x] * alpha;
+						node.vy += acceleration[y] * alpha;
+
+						const nextPosition = [node.x + node.vx, node.y + node.vy];
+
+						// Determine when the car moves off this sector and onto the next
+						// If not vertical
+						if (Number.isFinite(grad.m) && Number.isFinite(grad.b)
+							&& grad.α !== 0 && grad.α !== Math.PI && grad.α !== 2 * Math.PI
+						) {
+							const y0 = grad.m * nextPosition[x] + grad.b;
+							if (grad.α > 0 && grad.α < Math.PI && y0 <= nextPosition[y]) {
+								node.nextPiece = true;
+							}
+							if (grad.α > Math.PI && y0 >= nextPosition[y]) {
+								node.nextPiece = true;
+							}
+						} else {
+							// Vertical, simply check x
+							if (grad.α === 0 && grad.x < nextPosition[x]) {
+								node.nextPiece = true;
+							}
+							if (grad.α === Math.PI && grad.x > nextPosition[x]) {
+								node.nextPiece = true;
+							}
+						}
+
+						// Determine if the car moved back a sector
+						const lastPiece = sectors[node.sector - 1 < 0 ? sectors.length - 1 : node.sector - 1];
+
+						// If not vertical
+						if (Number.isFinite(lastPiece.m) && Number.isFinite(lastPiece.b)
+							&& lastPiece.α !== 0 && lastPiece.α !== Math.PI && lastPiece.α !== 2 * Math.PI
+						) {
+							const y0 = lastPiece.m * node.x + lastPiece.b;
+							if (lastPiece.α > 0 && lastPiece.α < Math.PI && y0 > node.y) {
+								node.previousPiece = true;
+							}
+							if (lastPiece.α > Math.PI && y0 < node.y) {
+								node.previousPiece = true;
+							}
+						} else {
+							// Vertical, simply check x
+							if (lastPiece.α === 0 && lastPiece.x > node.x) {
+								node.previousPiece = true;
+							}
+							if (lastPiece.α === Math.PI && lastPiece.x < node.x) {
+								node.previousPiece = true;
+							}
+						}
+
+						// Can't move forward AND backwards. Let's assume they've moved back and need a course correction
+						if (node.previousPiece) {
+							node.nextPiece = false;
+						}
+					});
+				}
+
+				force.initialize = (_) => {
+					nodes = _;
+				};
+
+				return force;
+			})();
+			this.#simulation.force(`sector${i}`, grad.force);
+		});
 
 		this.#simulation.force('fCollide', d3.forceCollide(car => car.radius));
 		this.#simulation.force('fRailing', forceRailingBounce(this.#rails));
 
-		// Place Cars on Starting Line
+		// Place Cars on Starting Line and reinitialize lap/sector tracking properties
 		this.#simulation.nodes().forEach((car, i) => {
-			car.lapTimes = [];
-			car.x = -7 * (i + 1);
-			car.y = 5 * Math.pow(-1, i);
-			// Start with some velocity to increase excitement at the start
-			car.vx = 0.9;
-			car.vy = 0;
-			car.posn = [];
-			car.time = [];
+			Object.assign(car, {
+				currentLap: 0,
+				lapTimes: [],
+				nextPiece: false,
+				posn: [],
+				previousPiece: false,
+				sector: 0,
+				time: [],
+				// Start with some velocity to increase excitement at the start
+				vx: 0.9,
+				vy: 0,
+				x: -7 * (i + 1),
+				y: 5 * Math.pow(-1, i),
+			});
 		});
 		this.#moveCars();
 		this.#simulation.alphaDecay(0);
@@ -471,12 +477,6 @@ class Simulation {
 		// At end of race
 		if (this.#cars.every(c => c.lapTimes.length > this.#laps)) {
 			this.#simulation.stop();
-
-			// Remove circular reference for conversion to JSON
-			this.#cars.forEach((car) => {
-				delete car.sphere;
-			});
-
 			postMessage({
 				type: 'endRace',
 				detail: JSON.stringify(this),
@@ -489,27 +489,23 @@ class Simulation {
 		this.#simulation.nodes().forEach((car, i, nodes) => {
 			if (car.nextPiece) {
 				// Add to time-tracking only on first crossover in the lap
-				const piece = car.sector;
-				// TODO: Why is this sometimes not grabbing the time object?!
-				// TODO: What could cause an extra push to lapTimes?!
-				if (!car.time.some(t => t.lap === car.lapTimes.length && t.piece === piece)) {
+				if (!car.time.some(t => t.lap === car.lapTimes.length && t.sector === car.sector)) {
 					car.time.push({
 						// TODO: point to index of car.posn with same tick
 						lap: car.lapTimes.length,
-						piece,
+						sector: car.sector,
 						tick: this.#tick,
 						time: this.#time,
 					});
 
 					// Cross the start/end line, next lap
-					if (piece === 0) {
+					if (car.sector === 0 && car.lapTimes.length <= this.#laps && car.currentLap === car.lapTimes.length) {
 						if (!this.#finalStanding.includes(car.name)) {
-							const lastTime = car.time.slice(-1).pop();
-							// if (lastTime) console.log('Sam, next lap!', this.#tick, `${car.name[0]}:${lastTime.lap}:${lastTime.piece}`);
 							car.lapTimes.push({
 								tick: this.#tick,
 								time: this.#time,
 							});
+							car.currentLap = car.lapTimes.length;
 						}
 
 						if (car.lapTimes.length > this.#laps) {
@@ -539,7 +535,7 @@ class Simulation {
 
 				car.y = Math.min(Math.max(-20, car.y), 20);
 
-				if (car.x > this.#sectors[0].x + (this.#cars.length - place) * 10) {
+				if (car.x > this.#sectors[0].x + (this.#cars.length - place) * (car.radius * 2 + 2)) {
 					car.fx = car.x;
 					car.fy = car.y;
 				}
